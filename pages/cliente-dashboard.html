@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Cliente - Drop Point Delivery</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/cliente.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/css/leaflet.css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-box"></i>
+                    <span>Drop Point</span>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#" class="nav-link active" onclick="showSection('encomendas')">
+                        <i class="fas fa-box"></i> Minhas Encomendas
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('nova-encomenda')">
+                        <i class="fas fa-plus"></i> Nova Encomenda
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('perfil')">
+                        <i class="fas fa-user"></i> Perfil
+                    </a>
+                </nav>
+                <div class="user-menu">
+                    <span class="user-name" id="user-name">Cliente</span>
+                    <button class="btn btn-danger btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Seção: Minhas Encomendas -->
+            <section id="section-encomendas" class="dashboard-section active">
+                <div class="section-header">
+                    <h2><i class="fas fa-box"></i> Minhas Encomendas</h2>
+                    <button class="btn btn-primary" onclick="showSection('nova-encomenda')">
+                        <i class="fas fa-plus"></i> Nova Encomenda
+                    </button>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters">
+                    <select id="filter-status" onchange="filterEncomendas()">
+                        <option value="">Todos os Status</option>
+                        <option value="aguardando">Aguardando</option>
+                        <option value="em_rota">Em Rota</option>
+                        <option value="entregue">Entregue</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                    <input type="text" id="search-encomenda" placeholder="Buscar por código..." onkeyup="filterEncomendas()">
+                </div>
+
+                <!-- Lista de Encomendas -->
+                <div id="encomendas-list" class="encomendas-grid">
+                    <div class="loading-container">
+                        <div class="loading"></div>
+                        <p>Carregando encomendas...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção: Nova Encomenda -->
+            <section id="section-nova-encomenda" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-plus"></i> Nova Encomenda</h2>
+                    <button class="btn btn-outline" onclick="showSection('encomendas')">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                </div>
+
+                <div class="form-card">
+                    <form id="form-nova-encomenda">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="codigo_rastreio">Código de Rastreio (opcional)</label>
+                                <input type="text" id="codigo_rastreio" placeholder="Deixe em branco para gerar automaticamente">
+                            </div>
+                            <div class="form-group">
+                                <label for="loja_origem">Loja de Origem *</label>
+                                <input type="text" id="loja_origem" required placeholder="Ex: Amazon, Mercado Livre">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="valor">Valor da Encomenda *</label>
+                                <input type="number" id="valor" step="0.01" required placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="tipo_entrega">Tipo de Entrega *</label>
+                                <select id="tipo_entrega" required onchange="toggleEntregaFields()">
+                                    <option value="">Selecione...</option>
+                                    <option value="agendada">Agendada</option>
+                                    <option value="movel">Móvel (Entrega no Local Atual)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Campos para Entrega Agendada -->
+                        <div id="agendada-fields" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="data_agendada">Data e Hora *</label>
+                                    <input type="datetime-local" id="data_agendada">
+                                </div>
+                                <div class="form-group">
+                                    <label for="endereco_entrega">Endereço de Entrega *</label>
+                                    <input type="text" id="endereco_entrega" placeholder="Rua, número, bairro">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campos para Entrega Móvel -->
+                        <div id="movel-fields" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                A entrega será feita no seu local atual. Certifique-se de permitir o acesso à localização.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="observacoes">Observações</label>
+                            <textarea id="observacoes" rows="3" placeholder="Informações adicionais sobre a encomenda"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-check"></i> Criar Encomenda
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Seção: Perfil -->
+            <section id="section-perfil" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-user"></i> Meu Perfil</h2>
+                </div>
+
+                <div class="profile-card">
+                    <div class="profile-info">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="profile-details">
+                            <h3 id="profile-name">Nome do Cliente</h3>
+                            <p id="profile-email">email@exemplo.com</p>
+                            <p id="profile-phone">Telefone não cadastrado</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-box"></i>
+                            <div>
+                                <h4 id="stat-total">0</h4>
+                                <p>Total de Encomendas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <h4 id="stat-aguardando">0</h4>
+                                <p>Aguardando</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-truck"></i>
+                            <div>
+                                <h4 id="stat-em-rota">0</h4>
+                                <p>Em Rota</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <h4 id="stat-entregue">0</h4>
+                                <p>Entregues</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal: Detalhes da Encomenda -->
+    <div id="modal-detalhes" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fas fa-box"></i> Detalhes da Encomenda</h3>
+                <button class="btn-close" onclick="closeModal('modal-detalhes')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detalhes-grid">
+                    <!-- Informações -->
+                    <div class="detalhes-info">
+                        <h4>Informações</h4>
+                        <div class="info-item">
+                            <span class="label">Código:</span>
+                            <span id="det-codigo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Loja:</span>
+                            <span id="det-loja" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Valor:</span>
+                            <span id="det-valor" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Status:</span>
+                            <span id="det-status" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Tipo:</span>
+                            <span id="det-tipo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Entregador:</span>
+                            <span id="det-entregador" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Criado em:</span>
+                            <span id="det-criado" class="value">-</span>
+                        </div>
+                        <div class="info-item full-width" id="det-obs-container" style="display: none;">
+                            <span class="label">Observações:</span>
+                            <span id="det-obs" class="value">-</span>
+                        </div>
+
+                        <!-- Ações -->
+                        <div class="detalhes-actions">
+                            <button class="btn btn-primary" id="btn-rastrear" onclick="showTracking()">
+                                <i class="fas fa-map-marker-alt"></i> Rastrear
+                            </button>
+                            <button class="btn btn-secondary" id="btn-chat" onclick="openChatModal()">
+                                <i class="fas fa-comments"></i> Chat
+                            </button>
+                            <button class="btn btn-danger" id="btn-cancelar" onclick="cancelarEncomenda()">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mapa de Rastreamento -->
+                    <div class="detalhes-map" id="tracking-section" style="display: none;">
+                        <h4>Rastreamento em Tempo Real</h4>
+                        <div id="map"></div>
+                        <div class="tracking-info">
+                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância estimada:</strong> <span id="tracking-distance">Calculando...</span></p>
+                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span id="tracking-time">Calculando...</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat -->
+                <div id="chat-section" style="display: none;">
+                    <div id="chat-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/socket.js"></script>
+    <script src="../assets/js/map.js"></script>
+    <script src="../assets/js/chat.js"></script>
+    <script src="../assets/js/cliente.js"></script>
+</body>
+</html>

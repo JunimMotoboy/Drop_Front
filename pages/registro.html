@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Drop Point Delivery</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="hero" style="padding: 40px 20px;">
+            <h1>📦 Drop Point Delivery</h1>
+            <p class="subtitle">Crie sua conta</p>
+        </header>
+
+        <div class="form-container">
+            <h2>Cadastro</h2>
+            
+            <div id="alert-container"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="nome">Nome Completo</label>
+                    <input type="text" id="nome" name="nome" required placeholder="Seu nome completo">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="seu@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" required placeholder="Mínimo 6 caracteres" minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmarSenha">Confirmar Senha</label>
+                    <input type="password" id="confirmarSenha" name="confirmarSenha" required placeholder="Digite a senha novamente">
+                </div>
+
+                <div class="form-group">
+                    <label for="telefone">Telefone</label>
+                    <input type="tel" id="telefone" name="telefone" placeholder="(00) 00000-0000">
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo">Tipo de Usuário</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="">Selecione...</option>
+                        <option value="cliente">Cliente</option>
+                        <option value="entregador">Entregador</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="enderecoGroup" style="display: none;">
+                    <label for="endereco">Endereço Principal</label>
+                    <textarea id="endereco" name="endereco" placeholder="Rua, número, bairro, cidade"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary form-submit" id="submitBtn">
+                    Cadastrar
+                </button>
+            </form>
+
+            <div class="form-link">
+                <p>Já tem uma conta? <a href="login.html">Faça login aqui</a></p>
+                <p><a href="../index.html">Voltar para o início</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mostrar campo de endereço apenas para clientes
+        document.getElementById('tipo').addEventListener('change', (e) => {
+            const enderecoGroup = document.getElementById('enderecoGroup');
+            if (e.target.value === 'cliente') {
+                enderecoGroup.style.display = 'block';
+            } else {
+                enderecoGroup.style.display = 'none';
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const alertContainer = document.getElementById('alert-container');
+            
+            // Validar senhas
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = document.getElementById('confirmarSenha').value;
+            
+            if (senha !== confirmarSenha) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        As senhas não coincidem!
+                    </div>
+                `;
+                return;
+            }
+            
+            // Desabilitar botão
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="loading"></span> Cadastrando...';
+            
+            const formData = {
+                nome: document.getElementById('nome').value,
+                email: document.getElementById('email').value,
+                senha: senha,
+                telefone: document.getElementById('telefone').value || null,
+                tipo: document.getElementById('tipo').value,
+                endereco: document.getElementById('endereco').value || null
+            };
+
+            try {
+                const response = await fetch('https://drop-29o0.onrender.com/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Salvar token e dados do usuário
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+
+                    // Mostrar mensagem de sucesso
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            Cadastro realizado com sucesso! Redirecionando...
+                        </div>
+                    `;
+
+                    // Redirecionar baseado no tipo de usuário
+                    setTimeout(() => {
+                        if (data.data.user.tipo === 'cliente') {
+                            window.location.href = 'cliente-dashboard.html';
+                        } else if (data.data.user.tipo === 'entregador') {
+                            window.location.href = 'entregador-dashboard.html';
+                        }
+                    }, 1500);
+                } else {
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ${data.message || 'Erro ao fazer cadastro'}
+                        </div>
+                    `;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Cadastrar';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alertContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        Erro ao conectar com o servidor. Verifique se o backend está rodando.
+                    </div>
+                `;
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Cadastrar';
+            }
+        });
+    </script>
+</body>
+</html>

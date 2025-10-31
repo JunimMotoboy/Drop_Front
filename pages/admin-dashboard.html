@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Drop Point Delivery</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Admin Panel</span>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                        <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('encomendas')">
+                        <i class="fas fa-box"></i> <span>Encomendas</span>
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('entregadores')">
+                        <i class="fas fa-truck"></i> <span>Entregadores</span>
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('clientes')">
+                        <i class="fas fa-users"></i> <span>Clientes</span>
+                    </a>
+                </nav>
+                <div class="user-menu">
+                    <span class="user-name" id="user-name">Admin</span>
+                    <button class="btn btn-danger btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Seção: Dashboard -->
+            <section id="section-dashboard" class="dashboard-section active">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-line"></i> Dashboard</h2>
+                    <button class="btn btn-outline" onclick="loadDashboardData()">
+                        <i class="fas fa-sync"></i> Atualizar
+                    </button>
+                </div>
+
+                <!-- Estatísticas -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #dbeafe;">
+                            <i class="fas fa-box" style="color: #2563eb;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-total-encomendas">0</h3>
+                            <p>Total de Encomendas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #fef3c7;">
+                            <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-aguardando">0</h3>
+                            <p>Aguardando</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #dbeafe;">
+                            <i class="fas fa-truck" style="color: #2563eb;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-em-rota">0</h3>
+                            <p>Em Rota</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #d1fae5;">
+                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-entregues">0</h3>
+                            <p>Entregues</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #d1fae5;">
+                            <i class="fas fa-users" style="color: #10b981;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-clientes">0</h3>
+                            <p>Clientes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #dbeafe;">
+                            <i class="fas fa-user-tie" style="color: #2563eb;"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="stat-entregadores">0</h3>
+                            <p>Entregadores</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráficos -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4>Encomendas por Status</h4>
+                        <canvas id="chart-status"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Entregas nos Últimos 7 Dias</h4>
+                        <canvas id="chart-timeline"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção: Encomendas -->
+            <section id="section-encomendas" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-box"></i> Gerenciar Encomendas</h2>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters">
+                    <select id="filter-encomenda-status" onchange="filterEncomendas()">
+                        <option value="">Todos os Status</option>
+                        <option value="aguardando">Aguardando</option>
+                        <option value="em_rota">Em Rota</option>
+                        <option value="entregue">Entregue</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                    <input type="text" id="search-encomenda" placeholder="Buscar..." onkeyup="filterEncomendas()">
+                </div>
+
+                <!-- Tabela -->
+                <div class="table-container">
+                    <table class="data-table" id="encomendas-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Cliente</th>
+                                <th>Entregador</th>
+                                <th>Loja</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="encomendas-tbody">
+                            <tr>
+                                <td colspan="7" class="loading-cell">
+                                    <div class="loading"></div>
+                                    <p>Carregando...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Seção: Entregadores -->
+            <section id="section-entregadores" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-truck"></i> Gerenciar Entregadores</h2>
+                    <button class="btn btn-primary" onclick="openModal('modal-novo-entregador')">
+                        <i class="fas fa-plus"></i> Novo Entregador
+                    </button>
+                </div>
+
+                <!-- Tabela -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Telefone</th>
+                                <th>Status</th>
+                                <th>Entregas</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="entregadores-tbody">
+                            <tr>
+                                <td colspan="6" class="loading-cell">
+                                    <div class="loading"></div>
+                                    <p>Carregando...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Seção: Clientes -->
+            <section id="section-clientes" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-users"></i> Gerenciar Clientes</h2>
+                </div>
+
+                <!-- Tabela -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Telefone</th>
+                                <th>Encomendas</th>
+                                <th>Cadastro</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-tbody">
+                            <tr>
+                                <td colspan="6" class="loading-cell">
+                                    <div class="loading"></div>
+                                    <p>Carregando...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal: Atribuir Entregador -->
+    <div id="modal-atribuir" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Atribuir Entregador</h3>
+                <button class="btn-close" onclick="closeModal('modal-atribuir')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-atribuir">
+                    <div class="form-group">
+                        <label>Encomenda: <span id="atribuir-encomenda-info"></span></label>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-entregador">Selecione o Entregador *</label>
+                        <select id="select-entregador" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-check"></i> Atribuir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Novo Entregador -->
+    <div id="modal-novo-entregador" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus"></i> Cadastrar Entregador</h3>
+                <button class="btn-close" onclick="closeModal('modal-novo-entregador')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="form-novo-entregador">
+                    <div class="form-group">
+                        <label for="entregador-nome">Nome *</label>
+                        <input type="text" id="entregador-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="entregador-email">Email *</label>
+                        <input type="email" id="entregador-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="entregador-senha">Senha *</label>
+                        <input type="password" id="entregador-senha" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="entregador-telefone">Telefone</label>
+                        <input type="tel" id="entregador-telefone">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-check"></i> Cadastrar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/socket.js"></script>
+    <script src="../assets/js/admin.js"></script>
+</body>
+</html>

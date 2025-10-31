@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Entregador - Drop Point Delivery</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/entregador.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/css/leaflet.css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-truck"></i>
+                    <span>Drop Point</span>
+                </div>
+                <nav class="nav-menu">
+                    <a href="#" class="nav-link active" onclick="showSection('entregas')">
+                        <i class="fas fa-list"></i> <span>Minhas Entregas</span>
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('historico')">
+                        <i class="fas fa-history"></i> <span>Histórico</span>
+                    </a>
+                    <a href="#" class="nav-link" onclick="showSection('perfil')">
+                        <i class="fas fa-user"></i> <span>Perfil</span>
+                    </a>
+                </nav>
+                <div class="user-menu">
+                    <div class="location-status" id="location-status">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span id="location-text">Localização desativada</span>
+                    </div>
+                    <span class="user-name" id="user-name">Entregador</span>
+                    <button class="btn btn-danger btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Seção: Minhas Entregas -->
+            <section id="section-entregas" class="dashboard-section active">
+                <div class="section-header">
+                    <h2><i class="fas fa-list"></i> Minhas Entregas</h2>
+                    <button class="btn btn-primary" id="btn-toggle-location" onclick="toggleLocationSharing()">
+                        <i class="fas fa-map-marker-alt"></i> Ativar Localização
+                    </button>
+                </div>
+
+                <!-- Estatísticas Rápidas -->
+                <div class="quick-stats">
+                    <div class="stat-box">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h3 id="stat-pendentes">0</h3>
+                            <p>Pendentes</p>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-truck"></i>
+                        <div>
+                            <h3 id="stat-em-rota">0</h3>
+                            <p>Em Rota</p>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <h3 id="stat-concluidas-hoje">0</h3>
+                            <p>Hoje</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters">
+                    <select id="filter-status" onchange="filterEntregas()">
+                        <option value="">Todos os Status</option>
+                        <option value="aguardando">Aguardando</option>
+                        <option value="em_rota">Em Rota</option>
+                    </select>
+                    <select id="filter-tipo" onchange="filterEntregas()">
+                        <option value="">Todos os Tipos</option>
+                        <option value="agendada">Agendada</option>
+                        <option value="movel">Móvel</option>
+                    </select>
+                </div>
+
+                <!-- Lista de Entregas -->
+                <div id="entregas-list" class="entregas-list">
+                    <div class="loading-container">
+                        <div class="loading"></div>
+                        <p>Carregando entregas...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção: Histórico -->
+            <section id="section-historico" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-history"></i> Histórico de Entregas</h2>
+                </div>
+
+                <!-- Filtro de Data -->
+                <div class="filters">
+                    <input type="date" id="filter-data-inicio" onchange="loadHistorico()">
+                    <input type="date" id="filter-data-fim" onchange="loadHistorico()">
+                    <button class="btn btn-outline" onclick="clearDateFilters()">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+
+                <!-- Lista de Histórico -->
+                <div id="historico-list" class="historico-list">
+                    <div class="loading-container">
+                        <div class="loading"></div>
+                        <p>Carregando histórico...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Seção: Perfil -->
+            <section id="section-perfil" class="dashboard-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-user"></i> Meu Perfil</h2>
+                </div>
+
+                <div class="profile-card">
+                    <div class="profile-info">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="profile-details">
+                            <h3 id="profile-name">Nome do Entregador</h3>
+                            <p id="profile-email">email@exemplo.com</p>
+                            <p id="profile-phone">Telefone não cadastrado</p>
+                            <p id="profile-status" class="status-badge">Status: Ativo</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-box"></i>
+                            <div>
+                                <h4 id="stat-total-entregas">0</h4>
+                                <p>Total de Entregas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <h4 id="stat-concluidas">0</h4>
+                                <p>Concluídas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-star"></i>
+                            <div>
+                                <h4 id="stat-avaliacao">5.0</h4>
+                                <p>Avaliação</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-calendar"></i>
+                            <div>
+                                <h4 id="stat-membro-desde">-</h4>
+                                <p>Membro desde</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal: Detalhes da Entrega -->
+    <div id="modal-detalhes" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fas fa-box"></i> Detalhes da Entrega</h3>
+                <button class="btn-close" onclick="closeModal('modal-detalhes')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detalhes-grid">
+                    <!-- Informações -->
+                    <div class="detalhes-info">
+                        <h4>Informações da Entrega</h4>
+                        <div class="info-item">
+                            <span class="label">Código:</span>
+                            <span id="det-codigo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Cliente:</span>
+                            <span id="det-cliente" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Loja:</span>
+                            <span id="det-loja" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Valor:</span>
+                            <span id="det-valor" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Status:</span>
+                            <span id="det-status" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Tipo:</span>
+                            <span id="det-tipo" class="value">-</span>
+                        </div>
+                        <div class="info-item" id="det-endereco-container">
+                            <span class="label">Endereço:</span>
+                            <span id="det-endereco" class="value">-</span>
+                        </div>
+                        <div class="info-item" id="det-agendamento-container">
+                            <span class="label">Agendado para:</span>
+                            <span id="det-agendamento" class="value">-</span>
+                        </div>
+                        <div class="info-item full-width" id="det-obs-container" style="display: none;">
+                            <span class="label">Observações:</span>
+                            <span id="det-obs" class="value">-</span>
+                        </div>
+
+                        <!-- Ações de Status -->
+                        <div class="status-actions">
+                            <h4>Atualizar Status</h4>
+                            <div class="status-buttons">
+                                <button class="btn btn-primary" id="btn-iniciar" onclick="atualizarStatus('em_rota')">
+                                    <i class="fas fa-play"></i> Iniciar Entrega
+                                </button>
+                                <button class="btn btn-success" id="btn-concluir" onclick="atualizarStatus('entregue')">
+                                    <i class="fas fa-check"></i> Marcar como Entregue
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Outras Ações -->
+                        <div class="detalhes-actions">
+                            <button class="btn btn-secondary" onclick="openChatModal()">
+                                <i class="fas fa-comments"></i> Chat com Cliente
+                            </button>
+                            <button class="btn btn-outline" onclick="openMapModal()">
+                                <i class="fas fa-map"></i> Ver no Mapa
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mapa -->
+                    <div class="detalhes-map" id="map-section" style="display: none;">
+                        <h4>Localização</h4>
+                        <div id="map"></div>
+                        <div class="map-info">
+                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância:</strong> <span id="map-distance">-</span></p>
+                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span id="map-time">-</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat -->
+                <div id="chat-section" style="display: none;">
+                    <div id="chat-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/socket.js"></script>
+    <script src="../assets/js/map.js"></script>
+    <script src="../assets/js/chat.js"></script>
+    <script src="../assets/js/entregador.js"></script>
+</body>
+</html>
