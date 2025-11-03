@@ -1,5 +1,5 @@
 // Configuração do Socket.IO
-const SOCKET_URL = 'https://drop-29o0.onrender.com:3000';
+const SOCKET_URL = 'https://drop-29o0.onrender.com';
 let socket = null;
 
 // Conectar ao Socket.IO
