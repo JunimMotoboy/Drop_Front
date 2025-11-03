@@ -131,9 +131,16 @@
                     // Mostrar mensagem de sucesso com toast
                     showToastEnhanced('Login realizado com sucesso!', 'success', 2000);
                     
-                    // Mostrar animação de sucesso
-                    alertContainer.innerHTML = '<div id="success-container"></div>';
-                    showSuccessAnimation('success-container', 'Login realizado!');
+                    // Mostrar mensagem de sucesso
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Sucesso!</strong>
+                                <p>Login realizado com sucesso!</p>
+                            </div>
+                        </div>
+                    `;
 
                     // Redirecionar baseado no tipo de usuário
                     setTimeout(() => {
