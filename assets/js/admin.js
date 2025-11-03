@@ -49,8 +49,26 @@ async function loadEncomendas() {
 
         if (response.ok) {
             const data = await response.json();
-            encomendas = data.encomendas || [];
+            console.log('Dados recebidos (admin):', data);
+            
+            // Verificar diferentes formatos de resposta
+            if (data.data && data.data.encomendas) {
+                encomendas = data.data.encomendas;
+            } else if (data.encomendas) {
+                encomendas = data.encomendas;
+            } else if (Array.isArray(data.data)) {
+                encomendas = data.data;
+            } else if (Array.isArray(data)) {
+                encomendas = data;
+            } else {
+                encomendas = [];
+            }
+            
+            console.log('Encomendas carregadas (admin):', encomendas.length);
             renderEncomendas();
+        } else {
+            console.error('Erro ao carregar encomendas:', response.status);
+            showToast('Erro ao carregar encomendas', 'error');
         }
     } catch (error) {
         console.error('Erro:', error);

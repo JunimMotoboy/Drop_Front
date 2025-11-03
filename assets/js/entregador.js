@@ -49,10 +49,26 @@ async function loadEntregas() {
 
         if (response.ok) {
             const data = await response.json();
-            entregas = data.entregas || [];
+            console.log('Dados recebidos (entregador):', data);
+            
+            // Verificar diferentes formatos de resposta
+            if (data.data && data.data.entregas) {
+                entregas = data.data.entregas;
+            } else if (data.entregas) {
+                entregas = data.entregas;
+            } else if (Array.isArray(data.data)) {
+                entregas = data.data;
+            } else if (Array.isArray(data)) {
+                entregas = data;
+            } else {
+                entregas = [];
+            }
+            
+            console.log('Entregas carregadas (entregador):', entregas.length);
             renderEntregas();
             updateQuickStats();
         } else {
+            console.error('Erro ao carregar entregas:', response.status);
             showToast('Erro ao carregar entregas', 'error');
         }
     } catch (error) {
