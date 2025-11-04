@@ -246,17 +246,8 @@ async function atualizarStatus(novoStatus) {
     if (!confirm(confirmMsg)) return;
 
     try {
+        // O corpo da requisição agora só precisa do status.
         const requestBody = { status: novoStatus };
-        if (novoStatus === 'aceita') {
-            const user = getUser();
-            if (user && user.id) {
-                // Última tentativa: usando 'entregador_id' como chave.
-                requestBody.entregador_id = user.id;
-            } else {
-                showToast('Erro: ID do entregador não encontrado. Faça login novamente.', 'error');
-                return;
-            }
-        }
 
         const response = await fetchWithAuth(
             `${API_URL}/encomendas/${currentEntrega.id_encomenda}/status`,
