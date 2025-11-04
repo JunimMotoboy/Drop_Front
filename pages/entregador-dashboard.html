@@ -231,22 +231,19 @@
                             <span class="label">Agendado para:</span>
                             <span id="det-agendamento" class="value">-</span>
                         </div>
-                        <div class="info-item full-width" id="det-obs-container" style="display: none;">
-                            <span class="label">Observações:</span>
-                            <span id="det-obs" class="value">-</span>
-                        </div>
+                        <div id="det-obs-container" style="display: none;"></div>
 
                         <!-- Ações de Status -->
-                        <div class="status-actions">
-                            <h4>Atualizar Status</h4>
-                            <div class="status-buttons">
-                                <button class="btn btn-primary" id="btn-iniciar" onclick="atualizarStatus('em_rota')">
-                                    <i class="fas fa-play"></i> Iniciar Entrega
-                                </button>
-                                <button class="btn btn-success" id="btn-concluir" onclick="atualizarStatus('entregue')">
-                                    <i class="fas fa-check"></i> Marcar como Entregue
-                                </button>
-                            </div>
+                        <div class="detalhes-status-actions">
+                            <button class="btn btn-success" id="btn-aceitar" onclick="atualizarStatus('aceita')">
+                                <i class="fas fa-check"></i> Aceitar Entrega
+                            </button>
+                            <button class="btn btn-success" id="btn-iniciar" onclick="atualizarStatus('em_rota')">
+                                <i class="fas fa-play"></i> Iniciar Entrega
+                            </button>
+                            <button class="btn btn-primary" id="btn-concluir" onclick="atualizarStatus('entregue')">
+                                <i class="fas fa-check-circle"></i> Concluir Entrega
+                            </button>
                         </div>
 
                         <!-- Outras Ações -->

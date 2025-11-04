@@ -92,6 +92,7 @@ function formatDate(dateString) {
 function formatStatus(status) {
     const statusMap = {
         'aguardando': { text: 'Aguardando', class: 'status-warning' },
+        'aceita': { text: 'Aceita', class: 'status-primary' },
         'em_rota': { text: 'Em Rota', class: 'status-info' },
         'entregue': { text: 'Entregue', class: 'status-success' },
         'cancelado': { text: 'Cancelado', class: 'status-danger' }

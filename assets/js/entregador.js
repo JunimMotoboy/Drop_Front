@@ -218,10 +218,12 @@ async function verDetalhes(idEncomenda) {
     }
 
     // Controlar botões de status
+    const btnAceitar = document.getElementById('btn-aceitar');
     const btnIniciar = document.getElementById('btn-iniciar');
     const btnConcluir = document.getElementById('btn-concluir');
 
-    btnIniciar.style.display = currentEntrega.status === 'aguardando' ? 'block' : 'none';
+    btnAceitar.style.display = currentEntrega.status === 'aguardando' ? 'block' : 'none';
+    btnIniciar.style.display = currentEntrega.status === 'aceita' ? 'block' : 'none';
     btnConcluir.style.display = currentEntrega.status === 'em_rota' ? 'block' : 'none';
 
     // Esconder seções
@@ -235,18 +237,32 @@ async function verDetalhes(idEncomenda) {
 async function atualizarStatus(novoStatus) {
     if (!currentEntrega) return;
 
-    const confirmMsg = novoStatus === 'em_rota' ? 
+    const confirmMsg = novoStatus === 'aceita' ? 
+        'Aceitar esta entrega?' : 
+        novoStatus === 'em_rota' ? 
         'Iniciar esta entrega?' : 
         'Marcar como entregue?';
     
     if (!confirm(confirmMsg)) return;
 
     try {
+        const requestBody = { status: novoStatus };
+        if (novoStatus === 'aceita') {
+            const user = getUser();
+            if (user && user.id) {
+                // Última tentativa: usando 'entregador_id' como chave.
+                requestBody.entregador_id = user.id;
+            } else {
+                showToast('Erro: ID do entregador não encontrado. Faça login novamente.', 'error');
+                return;
+            }
+        }
+
         const response = await fetchWithAuth(
             `${API_URL}/encomendas/${currentEntrega.id_encomenda}/status`,
             {
                 method: 'PUT',
-                body: JSON.stringify({ status: novoStatus })
+                body: JSON.stringify(requestBody)
             }
         );
 
@@ -274,31 +290,40 @@ function openMapModal() {
     const mapSection = document.getElementById('map-section');
     mapSection.style.display = 'block';
 
-    if (!mapManager) {
-        mapManager = new MapManager('map');
-        mapManager.init();
-    }
-
-    mapManager.getUserLocation((error, myLocation) => {
-        if (error) {
-            showToast('Erro ao obter localização', 'error');
-            return;
-        }
-
-        mapManager.addMarker('entregador', myLocation.lat, myLocation.lng, {
-            icon: 'delivery',
-            popup: 'Você está aqui'
-        });
-
-        // Adicionar destino se disponível
-        if (currentEntrega.tipo_entrega === 'agendada' && currentEntrega.endereco_entrega) {
-            // Aqui você poderia geocodificar o endereço
-            // Por enquanto, apenas centralizamos no entregador
-            mapManager.centerMap(myLocation.lat, myLocation.lng, 15);
+    // Aguardar o DOM atualizar antes de inicializar/redimensionar o mapa
+    setTimeout(() => {
+        if (!mapManager) {
+            mapManager = new MapManager('map');
+            mapManager.init();
         } else {
-            mapManager.centerMap(myLocation.lat, myLocation.lng, 15);
+            // Se o mapa já existe, apenas redimensionar
+            mapManager.resize();
         }
-    });
+
+        mapManager.getUserLocation((error, myLocation) => {
+            if (error) {
+                showToast('Erro ao obter localização', 'error');
+                return;
+            }
+
+            // Limpar marcadores anteriores
+            mapManager.clearMarkers();
+
+            mapManager.addMarker('entregador', myLocation.lat, myLocation.lng, {
+                icon: 'delivery',
+                popup: 'Você está aqui'
+            });
+
+            // Adicionar destino se disponível
+            if (currentEntrega.tipo_entrega === 'agendada' && currentEntrega.endereco_entrega) {
+                // Aqui você poderia geocodificar o endereço
+                // Por enquanto, apenas centralizamos no entregador
+                mapManager.centerMap(myLocation.lat, myLocation.lng, 15);
+            } else {
+                mapManager.centerMap(myLocation.lat, myLocation.lng, 15);
+            }
+        });
+    }, 200);
 }
 
 // Abrir chat

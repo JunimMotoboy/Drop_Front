@@ -27,7 +27,22 @@ class MapManager {
             maxZoom: 19
         }).addTo(this.map);
 
+        // Forçar recalculo do tamanho
+        this.resize();
+
         return this;
+    }
+
+    // Método para recalcular tamanho do mapa
+    resize() {
+        // O delay é importante para garantir que o container do mapa esteja
+        // visível e com o tamanho correto antes de renderizar o mapa,
+        // especialmente após animações ou mudanças de display.
+        setTimeout(() => {
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        }, 150);
     }
 
     // Adicionar marcador
@@ -325,9 +340,26 @@ mapStyles.textContent = `
 
     #map {
         width: 100%;
-        height: 400px;
+        height: 500px;
+        min-height: 400px;
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .detalhes-map #map {
+        height: 100%;
+        min-height: 500px;
+    }
+
+    @media (max-width: 768px) {
+        #map {
+            height: 400px;
+            min-height: 300px;
+        }
+        
+        .detalhes-map #map {
+            min-height: 400px;
+        }
     }
 
     .leaflet-popup-content-wrapper {
