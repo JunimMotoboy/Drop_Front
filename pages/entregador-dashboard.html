@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Entregador - Drop Point Delivery</title>
-    
+
     <!-- CSS -->
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/entregador.css">
-    
+    <link rel="stylesheet" href="../assets/css/map-fixed.css">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/css/leaflet.css" />
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <!-- Header -->
     <header class="dashboard-header">
@@ -235,11 +238,8 @@
 
                         <!-- Ações de Status -->
                         <div class="detalhes-status-actions">
-                            <button class="btn btn-success" id="btn-aceitar" onclick="atualizarStatus('aceita')">
-                                <i class="fas fa-check"></i> Aceitar Entrega
-                            </button>
-                            <button class="btn btn-success" id="btn-iniciar" onclick="atualizarStatus('em_rota')">
-                                <i class="fas fa-play"></i> Iniciar Entrega
+                            <button class="btn btn-success" id="btn-aceitar" onclick="atualizarStatus('em_rota')">
+                                <i class="fas fa-check"></i> Aceitar e Iniciar Entrega
                             </button>
                             <button class="btn btn-primary" id="btn-concluir" onclick="atualizarStatus('entregue')">
                                 <i class="fas fa-check-circle"></i> Concluir Entrega
@@ -262,8 +262,10 @@
                         <h4>Localização</h4>
                         <div id="map"></div>
                         <div class="map-info">
-                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância:</strong> <span id="map-distance">-</span></p>
-                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span id="map-time">-</span></p>
+                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância:</strong> <span
+                                    id="map-distance">-</span></p>
+                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span
+                                    id="map-time">-</span></p>
                         </div>
                     </div>
                 </div>
@@ -280,9 +282,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/api-utils.js"></script>
+    <script src="../assets/js/geocoding.js"></script>
     <script src="../assets/js/socket.js"></script>
-    <script src="../assets/js/map.js"></script>
+    <script src="../assets/js/map-google.js"></script>
     <script src="../assets/js/chat.js"></script>
     <script src="../assets/js/entregador.js"></script>
 </body>
+
 </html>

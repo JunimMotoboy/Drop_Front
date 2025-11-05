@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Cliente - Drop Point Delivery</title>
-    
+
     <!-- CSS -->
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/cliente.css">
-    
+    <link rel="stylesheet" href="../assets/css/map-fixed.css">
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/css/leaflet.css" />
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <!-- Header -->
     <header class="dashboard-header">
@@ -66,7 +69,8 @@
                         <option value="entregue">Entregue</option>
                         <option value="cancelado">Cancelado</option>
                     </select>
-                    <input type="text" id="search-encomenda" placeholder="Buscar por código..." onkeyup="filterEncomendas()">
+                    <input type="text" id="search-encomenda" placeholder="Buscar por código..."
+                        onkeyup="filterEncomendas()">
                 </div>
 
                 <!-- Lista de Encomendas -->
@@ -92,7 +96,8 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="codigo_rastreio">Código de Rastreio (opcional)</label>
-                                <input type="text" id="codigo_rastreio" placeholder="Deixe em branco para gerar automaticamente">
+                                <input type="text" id="codigo_rastreio"
+                                    placeholder="Deixe em branco para gerar automaticamente">
                             </div>
                             <div class="form-group">
                                 <label for="loja_origem">Loja de Origem *</label>
@@ -133,13 +138,15 @@
                         <div id="movel-fields" style="display: none;">
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle"></i>
-                                A entrega será feita no seu local atual. Certifique-se de permitir o acesso à localização.
+                                A entrega será feita no seu local atual. Certifique-se de permitir o acesso à
+                                localização.
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="observacoes">Observações</label>
-                            <textarea id="observacoes" rows="3" placeholder="Informações adicionais sobre a encomenda"></textarea>
+                            <textarea id="observacoes" rows="3"
+                                placeholder="Informações adicionais sobre a encomenda"></textarea>
                         </div>
 
                         <button type="submit" class="btn btn-primary btn-block">
@@ -266,8 +273,10 @@
                         <h4>Rastreamento em Tempo Real</h4>
                         <div id="map"></div>
                         <div class="tracking-info">
-                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância estimada:</strong> <span id="tracking-distance">Calculando...</span></p>
-                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span id="tracking-time">Calculando...</span></p>
+                            <p><i class="fas fa-map-marker-alt"></i> <strong>Distância estimada:</strong> <span
+                                    id="tracking-distance">Calculando...</span></p>
+                            <p><i class="fas fa-clock"></i> <strong>Tempo estimado:</strong> <span
+                                    id="tracking-time">Calculando...</span></p>
                         </div>
                     </div>
                 </div>
@@ -284,9 +293,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/api-utils.js"></script>
+    <script src="../assets/js/geocoding.js"></script>
     <script src="../assets/js/socket.js"></script>
-    <script src="../assets/js/map.js"></script>
+    <script src="../assets/js/map-google.js"></script>
     <script src="../assets/js/chat.js"></script>
     <script src="../assets/js/cliente.js"></script>
 </body>
+
 </html>

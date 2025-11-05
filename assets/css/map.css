@@ -1,0 +1,140 @@
+/* ===== ESTILOS DO MAPA ===== */
+
+#map {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 500px !important;
+  max-height: 500px !important;
+  min-height: 400px !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+  background: #f0f0f0;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.detalhes-map {
+  width: 100%;
+  max-width: 100%;
+  height: 500px;
+  min-height: 500px;
+  max-height: 500px;
+  overflow: hidden;
+  position: relative;
+}
+
+.detalhes-map #map {
+  height: 100% !important;
+  max-height: 500px !important;
+  min-height: 500px !important;
+}
+
+#tracking-section {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+#tracking-section #map {
+  height: 500px !important;
+  max-height: 500px !important;
+  min-height: 400px !important;
+}
+
+#map-section {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+#map-section #map {
+  height: 500px !important;
+  max-height: 500px !important;
+  min-height: 400px !important;
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border-radius: 12px;
+  background: #f0f0f0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.leaflet-pane {
+  position: absolute !important;
+}
+
+.leaflet-tile-container {
+  position: absolute !important;
+}
+
+.leaflet-tile-pane {
+  opacity: 1 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.leaflet-popup-content {
+  margin: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Marcadores personalizados */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.marker-pin {
+  font-size: 24px;
+  text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  animation: bounce 2s infinite;
+}
+
+.user-pin {
+  color: #2563eb;
+}
+
+.delivery-pin {
+  color: #10b981;
+}
+
+.destination-pin {
+  color: #ef4444;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  #map {
+    height: 400px !important;
+    min-height: 300px !important;
+  }
+
+  .detalhes-map #map,
+  #tracking-section #map,
+  #map-section #map {
+    min-height: 400px !important;
+  }
+}
