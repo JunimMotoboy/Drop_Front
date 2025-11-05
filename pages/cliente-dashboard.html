@@ -77,7 +77,8 @@
                 <div id="encomendas-list" class="encomendas-grid">
                     <div class="loading-container">
                         <div class="loading"></div>
-                        <p>Carregando encomendas...</p>
+                        <p id="loading-text">Carregando encomendas...</p>
+                        <p class="loading-subtitle">O servidor pode estar inicializando, aguarde...</p>
                     </div>
                 </div>
             </section>
@@ -125,11 +126,11 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="data_agendada">Data e Hora *</label>
-                                    <input type="datetime-local" id="data_agendada">
+                                    <input type="datetime-local" id="data_agendada" placeholder="Selecione data e hora">
                                 </div>
                                 <div class="form-group">
                                     <label for="endereco_entrega">Endereço de Entrega *</label>
-                                    <input type="text" id="endereco_entrega" placeholder="Rua, número, bairro">
+                                    <input type="text" id="endereco_entrega" placeholder="Rua, número, bairro, cidade">
                                 </div>
                             </div>
                         </div>
