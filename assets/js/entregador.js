@@ -103,8 +103,13 @@ function renderEntregas() {
   container.innerHTML = pendentes
     .map((entrega) => {
       const status = formatStatus(entrega.status)
+      // ✅ CORREÇÃO: Exibir o tipo de entrega real do banco de dados
       const tipoEntrega =
-        entrega.tipo_entrega === 'agendada' ? 'Agendada' : 'Móvel'
+        entrega.tipo_entrega === 'agendada'
+          ? 'Agendada'
+          : entrega.tipo_entrega === 'movel'
+          ? 'Móvel'
+          : entrega.tipo_entrega || 'Não definido'
 
       return `
             <div class="entrega-item status-${
@@ -228,8 +233,14 @@ async function verDetalhes(idEncomenda) {
     'det-status'
   ).innerHTML = `<span class="entrega-status ${status.class}">${status.text}</span>`
 
-  document.getElementById('det-tipo').textContent =
-    currentEntrega.tipo_entrega === 'agendada' ? 'Agendada' : 'Móvel'
+  // ✅ CORREÇÃO: Exibir o tipo de entrega real do banco de dados
+  const tipoEntregaTexto =
+    currentEntrega.tipo_entrega === 'agendada'
+      ? 'Agendada'
+      : currentEntrega.tipo_entrega === 'movel'
+      ? 'Móvel'
+      : currentEntrega.tipo_entrega || 'Não definido'
+  document.getElementById('det-tipo').textContent = tipoEntregaTexto
 
   // Endereço e agendamento
   if (currentEntrega.tipo_entrega === 'agendada') {
@@ -365,8 +376,10 @@ async function openMapModal() {
       )
       console.log('🔍 Endereço:', currentEntrega.endereco_entrega)
 
-      // Verificar se existe endereço (independente do tipo)
+      // ✅ CORREÇÃO: Verificar se é entrega agendada E tem endereço
+      // Para entregas móveis, não deve tentar geocodificar
       if (
+        currentEntrega.tipo_entrega === 'agendada' &&
         currentEntrega.endereco_entrega &&
         currentEntrega.endereco_entrega.trim() !== ''
       ) {
@@ -446,10 +459,16 @@ async function openMapModal() {
         console.log(
           'ℹ️ Entrega móvel ou sem endereço - apenas marcador do entregador'
         )
-        // Para entregas móveis, apenas centralizar no entregador
+        // ✅ Para entregas móveis, apenas centralizar no entregador
         mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
-        document.getElementById('map-distance').textContent = '-'
-        document.getElementById('map-time').textContent = '-'
+        document.getElementById('map-distance').textContent =
+          currentEntrega.tipo_entrega === 'movel'
+            ? 'Entrega no local atual do cliente'
+            : '-'
+        document.getElementById('map-time').textContent =
+          currentEntrega.tipo_entrega === 'movel'
+            ? 'Aguardando localização do cliente'
+            : '-'
       }
     })
   }, 200)
