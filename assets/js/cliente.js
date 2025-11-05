@@ -438,6 +438,16 @@ function toggleEntregaFields() {
 async function criarEncomenda() {
   const tipoEntrega = document.getElementById('tipo_entrega').value
 
+  // 🔍 DEBUG: Verificar valor capturado
+  console.log('🔍 [CLIENTE] Tipo de entrega selecionado:', tipoEntrega)
+
+  // ✅ VALIDAÇÃO: Verificar se o tipo foi selecionado
+  if (!tipoEntrega || tipoEntrega === '') {
+    showToast('Por favor, selecione o tipo de entrega', 'error')
+    console.error('❌ [CLIENTE] Tipo de entrega não selecionado')
+    return
+  }
+
   const encomendaData = {
     codigo_rastreio: document.getElementById('codigo_rastreio').value || null,
     loja_origem: document.getElementById('loja_origem').value,
@@ -450,7 +460,19 @@ async function criarEncomenda() {
     encomendaData.data_agendada = document.getElementById('data_agendada').value
     encomendaData.endereco_entrega =
       document.getElementById('endereco_entrega').value
+
+    // 🔍 DEBUG: Verificar dados de entrega agendada
+    console.log('📅 [CLIENTE] Dados de entrega agendada:', {
+      data: encomendaData.data_agendada,
+      endereco: encomendaData.endereco_entrega,
+    })
   }
+
+  // 🔍 DEBUG: Mostrar objeto completo antes de enviar
+  console.log(
+    '📦 [CLIENTE] Dados completos da encomenda a serem enviados:',
+    JSON.stringify(encomendaData, null, 2)
+  )
 
   try {
     const response = await fetchWithAuth(`${API_URL}/encomendas`, {
@@ -458,18 +480,30 @@ async function criarEncomenda() {
       body: JSON.stringify(encomendaData),
     })
 
+    // 🔍 DEBUG: Verificar resposta da API
+    console.log('📡 [CLIENTE] Status da resposta:', response.status)
+
     if (response.ok) {
-      showToast('Encomenda criada com sucesso!', 'success')
+      const responseData = await response.json()
+      console.log('✅ [CLIENTE] Encomenda criada com sucesso:', responseData)
+
+      showToast(
+        `Encomenda criada com sucesso! Tipo: ${
+          tipoEntrega === 'agendada' ? 'Agendada' : 'Móvel'
+        }`,
+        'success'
+      )
       document.getElementById('form-nova-encomenda').reset()
       toggleEntregaFields()
       showSection('encomendas')
       loadEncomendas()
     } else {
       const data = await response.json()
+      console.error('❌ [CLIENTE] Erro na resposta:', data)
       showToast(data.message || 'Erro ao criar encomenda', 'error')
     }
   } catch (error) {
-    console.error('Erro ao criar encomenda:', error)
+    console.error('❌ [CLIENTE] Erro ao criar encomenda:', error)
     showToast('Erro ao criar encomenda', 'error')
   }
 }
