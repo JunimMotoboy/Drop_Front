@@ -36,7 +36,12 @@ function loadUserInfo() {
 
 // Carregar encomendas
 async function loadEncomendas() {
+  const loadingText = document.getElementById('loading-text')
+  const originalText = loadingText.textContent
+
   try {
+    // Atualizar texto de loading para informar sobre possível inicialização
+    loadingText.textContent = 'Conectando ao servidor...'
     logApiDebug('Carregando encomendas', 'Iniciando requisição')
 
     const result = await fetchApi(
@@ -60,9 +65,12 @@ async function loadEncomendas() {
     }
   } catch (error) {
     console.error('Erro ao carregar encomendas:', error)
-    showToast('Erro ao conectar com o servidor', 'error')
+    showToast('Erro ao conectar com o servidor. O serviço pode estar inicializando.', 'error')
     encomendas = []
     renderEncomendas()
+  } finally {
+    // Restaurar texto original
+    loadingText.textContent = originalText
   }
 }
 
