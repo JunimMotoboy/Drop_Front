@@ -1,50 +1,50 @@
 // ===== GERENCIADOR DE CHAT EM TEMPO REAL =====
 
 class ChatManager {
-    constructor(containerId, socket) {
-        this.containerId = containerId;
-        this.socket = socket;
-        this.currentChatId = null;
-        this.messages = [];
-        this.unreadCount = 0;
-        this.user = getUser();
-        
-        this.init();
+  constructor(containerId, socket) {
+    this.containerId = containerId
+    this.socket = socket
+    this.currentChatId = null
+    this.messages = []
+    this.unreadCount = 0
+    this.user = getUser()
+
+    this.init()
+  }
+
+  // Inicializar chat
+  init() {
+    this.setupSocketListeners()
+    this.renderChatInterface()
+  }
+
+  // Configurar listeners do Socket.IO
+  setupSocketListeners() {
+    // Receber nova mensagem
+    this.socket.on('nova_mensagem', (data) => {
+      this.handleNewMessage(data)
+    })
+
+    // Mensagem lida
+    this.socket.on('mensagem_lida', (data) => {
+      this.markMessageAsRead(data.id_mensagem)
+    })
+
+    // Usuário digitando
+    this.socket.on('usuario_digitando', (data) => {
+      this.showTypingIndicator(data)
+    })
+  }
+
+  // Renderizar interface do chat
+  renderChatInterface() {
+    const container = document.getElementById(this.containerId)
+    if (!container) {
+      console.error(`Container ${this.containerId} não encontrado`)
+      return
     }
 
-    // Inicializar chat
-    init() {
-        this.setupSocketListeners();
-        this.renderChatInterface();
-    }
-
-    // Configurar listeners do Socket.IO
-    setupSocketListeners() {
-        // Receber nova mensagem
-        this.socket.on('nova_mensagem', (data) => {
-            this.handleNewMessage(data);
-        });
-
-        // Mensagem lida
-        this.socket.on('mensagem_lida', (data) => {
-            this.markMessageAsRead(data.id_mensagem);
-        });
-
-        // Usuário digitando
-        this.socket.on('usuario_digitando', (data) => {
-            this.showTypingIndicator(data);
-        });
-    }
-
-    // Renderizar interface do chat
-    renderChatInterface() {
-        const container = document.getElementById(this.containerId);
-        if (!container) {
-            console.error(`Container ${this.containerId} não encontrado`);
-            return;
-        }
-
-        container.innerHTML = `
+    container.innerHTML = `
             <div class="chat-container">
                 <div class="chat-header">
                     <h3 id="chat-title">Chat</h3>
@@ -78,298 +78,340 @@ class ChatManager {
                     </form>
                 </div>
             </div>
-        `;
+        `
 
-        this.setupFormListener();
-        this.setupTypingListener();
+    this.setupFormListener()
+    this.setupTypingListener()
+  }
+
+  // Configurar listener do formulário
+  setupFormListener() {
+    const form = document.getElementById('chat-form')
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault()
+        this.sendMessage()
+      })
     }
+  }
 
-    // Configurar listener do formulário
-    setupFormListener() {
-        const form = document.getElementById('chat-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.sendMessage();
-            });
-        }
-    }
+  // Configurar listener de digitação
+  setupTypingListener() {
+    const input = document.getElementById('chat-input')
+    if (input) {
+      let typingTimer
+      input.addEventListener('input', () => {
+        clearTimeout(typingTimer)
 
-    // Configurar listener de digitação
-    setupTypingListener() {
-        const input = document.getElementById('chat-input');
-        if (input) {
-            let typingTimer;
-            input.addEventListener('input', () => {
-                clearTimeout(typingTimer);
-                
-                // Emitir evento de digitação
-                if (this.currentChatId) {
-                    this.socket.emit('digitando', {
-                        id_encomenda: this.currentChatId,
-                        usuario: this.user.nome
-                    });
-                }
-
-                // Parar de mostrar "digitando" após 1 segundo
-                typingTimer = setTimeout(() => {
-                    this.socket.emit('parou_digitar', {
-                        id_encomenda: this.currentChatId
-                    });
-                }, 1000);
-            });
-        }
-    }
-
-    // Abrir chat para uma encomenda
-    async openChat(idEncomenda, nomeOutroUsuario) {
-        this.currentChatId = idEncomenda;
-        
-        // Atualizar título
-        const title = document.getElementById('chat-title');
-        if (title) {
-            title.textContent = `Chat - ${nomeOutroUsuario}`;
+        // Emitir evento de digitação
+        if (this.currentChatId) {
+          this.socket.emit('digitando', {
+            id_encomenda: this.currentChatId,
+            usuario: this.user.nome,
+          })
         }
 
-        // Mostrar input
-        const inputContainer = document.getElementById('chat-input-container');
-        if (inputContainer) {
-            inputContainer.style.display = 'flex';
-        }
-
-        // Entrar na sala do Socket.IO
-        this.socket.emit('entrar_chat', { id_encomenda: idEncomenda });
-
-        // Carregar mensagens
-        await this.loadMessages(idEncomenda);
+        // Parar de mostrar "digitando" após 1 segundo
+        typingTimer = setTimeout(() => {
+          this.socket.emit('parou_digitar', {
+            id_encomenda: this.currentChatId,
+          })
+        }, 1000)
+      })
     }
+  }
+
+  // Abrir chat para uma encomenda
+  async openChat(idEncomenda, nomeOutroUsuario) {
+    this.currentChatId = idEncomenda
+
+    // Atualizar título
+    const title = document.getElementById('chat-title')
+    if (title) {
+      title.textContent = `Chat - ${nomeOutroUsuario}`
+    }
+
+    // Mostrar input
+    const inputContainer = document.getElementById('chat-input-container')
+    if (inputContainer) {
+      inputContainer.style.display = 'flex'
+    }
+
+    // Entrar na sala do Socket.IO
+    this.socket.emit('entrar_chat', { id_encomenda: idEncomenda })
 
     // Carregar mensagens
-    async loadMessages(idEncomenda) {
-        try {
-            const response = await fetchWithAuth(
-                `${API_URL}/chat/${idEncomenda}`,
-                { method: 'GET' }
-            );
+    await this.loadMessages(idEncomenda)
+  }
 
-            if (response.ok) {
-                const data = await response.json();
-                this.messages = data.mensagens || [];
-                this.renderMessages();
-                this.scrollToBottom();
-                
-                // Marcar mensagens como lidas
-                this.markAllAsRead(idEncomenda);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar mensagens:', error);
-            showToast('Erro ao carregar mensagens', 'error');
-        }
+  // Carregar mensagens
+  async loadMessages(idEncomenda) {
+    try {
+      const response = await fetchWithAuth(`${API_URL}/chat/${idEncomenda}`, {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        this.messages = data.mensagens || []
+        this.renderMessages()
+        this.scrollToBottom()
+
+        // Marcar mensagens como lidas
+        this.markAllAsRead(idEncomenda)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error)
+      showToast('Erro ao carregar mensagens', 'error')
     }
+  }
 
-    // Renderizar mensagens
-    renderMessages() {
-        const messagesContainer = document.getElementById('chat-messages');
-        if (!messagesContainer) return;
+  // Renderizar mensagens
+  renderMessages() {
+    const messagesContainer = document.getElementById('chat-messages')
+    if (!messagesContainer) return
 
-        if (this.messages.length === 0) {
-            messagesContainer.innerHTML = `
+    if (this.messages.length === 0) {
+      messagesContainer.innerHTML = `
                 <div class="chat-empty">
                     <p>Nenhuma mensagem ainda. Seja o primeiro a enviar!</p>
                 </div>
-            `;
-            return;
-        }
+            `
+      return
+    }
 
-        messagesContainer.innerHTML = this.messages.map(msg => {
-            const isOwn = msg.remetente === this.user.tipo;
-            const time = new Date(msg.criado_em).toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+    // Filtrar mensagens válidas (não undefined/null e com propriedades necessárias)
+    const validMessages = this.messages.filter(
+      (msg) =>
+        msg &&
+        typeof msg === 'object' &&
+        msg.mensagem !== undefined &&
+        msg.remetente !== undefined
+    )
 
-            return `
-                <div class="chat-message ${isOwn ? 'own-message' : 'other-message'}">
+    if (validMessages.length === 0) {
+      messagesContainer.innerHTML = `
+                <div class="chat-empty">
+                    <p>Nenhuma mensagem válida encontrada.</p>
+                </div>
+            `
+      return
+    }
+
+    messagesContainer.innerHTML = validMessages
+      .map((msg) => {
+        const isOwn = msg.remetente === this.user.tipo
+        const time = msg.criado_em
+          ? new Date(msg.criado_em).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '--:--'
+
+        return `
+                <div class="chat-message ${
+                  isOwn ? 'own-message' : 'other-message'
+                }">
                     <div class="message-content">
-                        <p>${this.escapeHtml(msg.mensagem)}</p>
+                        <p>${this.escapeHtml(msg.mensagem || '')}</p>
                         <span class="message-time">${time}</span>
                     </div>
                 </div>
-            `;
-        }).join('');
-    }
+            `
+      })
+      .join('')
+  }
 
-    // Enviar mensagem
-    async sendMessage() {
-        const input = document.getElementById('chat-input');
-        if (!input || !input.value.trim()) return;
+  // Enviar mensagem
+  async sendMessage() {
+    const input = document.getElementById('chat-input')
+    if (!input || !input.value.trim()) return
 
-        const mensagem = input.value.trim();
-        input.value = '';
+    const mensagem = input.value.trim()
+    input.value = ''
 
-        try {
-            const response = await fetchWithAuth(
-                `${API_URL}/chat/${this.currentChatId}`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({ mensagem })
-                }
-            );
-
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Emitir via Socket.IO para tempo real
-                this.socket.emit('enviar_mensagem', {
-                    id_encomenda: this.currentChatId,
-                    mensagem: data.mensagem
-                });
-
-                // Adicionar à lista local
-                this.messages.push(data.mensagem);
-                this.renderMessages();
-                this.scrollToBottom();
-            } else {
-                showToast('Erro ao enviar mensagem', 'error');
-            }
-        } catch (error) {
-            console.error('Erro ao enviar mensagem:', error);
-            showToast('Erro ao enviar mensagem', 'error');
+    try {
+      const response = await fetchWithAuth(
+        `${API_URL}/chat/${this.currentChatId}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ mensagem }),
         }
-    }
+      )
 
-    // Lidar com nova mensagem recebida
-    handleNewMessage(data) {
-        if (data.id_encomenda === this.currentChatId) {
-            this.messages.push(data.mensagem);
-            this.renderMessages();
-            this.scrollToBottom();
-            
-            // Marcar como lida se o chat está aberto
-            this.markMessageAsRead(data.mensagem.id_mensagem);
+      if (response.ok) {
+        const data = await response.json()
+
+        console.log('📨 Resposta da API ao enviar mensagem:', data)
+
+        // Simplesmente recarregar as mensagens do servidor
+        // Isso garante que sempre temos a estrutura correta
+        showToast('Mensagem enviada com sucesso!', 'success')
+        await this.loadMessages(this.currentChatId)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        showToast(errorData.message || 'Erro ao enviar mensagem', 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
+      showToast('Erro ao enviar mensagem', 'error')
+    }
+  }
+
+  // Lidar com nova mensagem recebida
+  handleNewMessage(data) {
+    if (data.id_encomenda === this.currentChatId) {
+      this.messages.push(data.mensagem)
+      this.renderMessages()
+      this.scrollToBottom()
+
+      // Marcar como lida se o chat está aberto
+      this.markMessageAsRead(data.mensagem.id_mensagem)
+    } else {
+      // Incrementar contador de não lidas
+      this.unreadCount++
+      this.updateUnreadBadge()
+
+      // Mostrar notificação
+      showToast(`Nova mensagem de ${data.remetente}`, 'info')
+    }
+  }
+
+  // Marcar mensagem como lida
+  async markMessageAsRead(idMensagem) {
+    try {
+      await fetchWithAuth(`${API_URL}/chat/mensagem/${idMensagem}/ler`, {
+        method: 'PUT',
+      })
+    } catch (error) {
+      console.error('Erro ao marcar mensagem como lida:', error)
+    }
+  }
+
+  // Marcar todas as mensagens como lidas
+  async markAllAsRead(idEncomenda) {
+    try {
+      // Tentar endpoint principal
+      const response = await fetchWithAuth(
+        `${API_URL}/chat/${idEncomenda}/ler-todas`,
+        { method: 'PUT' }
+      )
+
+      if (response && response.ok) {
+        this.unreadCount = 0
+        this.updateUnreadBadge()
+      } else if (response && response.status === 404) {
+        // Endpoint não existe, tentar alternativa
+        console.log(
+          'Endpoint /ler-todas não encontrado, tentando /marcar-lidas'
+        )
+        const altResponse = await fetchWithAuth(
+          `${API_URL}/chat/${idEncomenda}/marcar-lidas`,
+          { method: 'PUT' }
+        )
+
+        if (altResponse && altResponse.ok) {
+          this.unreadCount = 0
+          this.updateUnreadBadge()
         } else {
-            // Incrementar contador de não lidas
-            this.unreadCount++;
-            this.updateUnreadBadge();
-            
-            // Mostrar notificação
-            showToast(`Nova mensagem de ${data.remetente}`, 'info');
+          console.warn('Nenhum endpoint de marcar como lida disponível')
         }
+      }
+    } catch (error) {
+      // Erro não crítico - não impede o funcionamento do chat
+      console.warn(
+        'Não foi possível marcar mensagens como lidas:',
+        error.message
+      )
     }
+  }
 
-    // Marcar mensagem como lida
-    async markMessageAsRead(idMensagem) {
-        try {
-            await fetchWithAuth(
-                `${API_URL}/chat/mensagem/${idMensagem}/ler`,
-                { method: 'PUT' }
-            );
-        } catch (error) {
-            console.error('Erro ao marcar mensagem como lida:', error);
-        }
-    }
-
-    // Marcar todas as mensagens como lidas
-    async markAllAsRead(idEncomenda) {
-        try {
-            await fetchWithAuth(
-                `${API_URL}/chat/${idEncomenda}/ler-todas`,
-                { method: 'PUT' }
-            );
-            
-            this.unreadCount = 0;
-            this.updateUnreadBadge();
-        } catch (error) {
-            console.error('Erro ao marcar mensagens como lidas:', error);
-        }
-    }
-
-    // Mostrar indicador de digitação
-    showTypingIndicator(data) {
-        if (data.id_encomenda === this.currentChatId) {
-            const indicator = document.getElementById('typing-indicator');
-            if (indicator) {
-                indicator.style.display = 'flex';
-                indicator.innerHTML = `
+  // Mostrar indicador de digitação
+  showTypingIndicator(data) {
+    if (data.id_encomenda === this.currentChatId) {
+      const indicator = document.getElementById('typing-indicator')
+      if (indicator) {
+        indicator.style.display = 'flex'
+        indicator.innerHTML = `
                     <span>${data.usuario} está digitando</span>
                     <div class="typing-dots">
                         <span></span>
                         <span></span>
                         <span></span>
                     </div>
-                `;
+                `
 
-                // Esconder após 3 segundos
-                setTimeout(() => {
-                    indicator.style.display = 'none';
-                }, 3000);
-            }
-        }
+        // Esconder após 3 segundos
+        setTimeout(() => {
+          indicator.style.display = 'none'
+        }, 3000)
+      }
+    }
+  }
+
+  // Atualizar badge de mensagens não lidas
+  updateUnreadBadge() {
+    const badge = document.getElementById('chat-unread-badge')
+    if (badge) {
+      if (this.unreadCount > 0) {
+        badge.textContent = this.unreadCount
+        badge.style.display = 'flex'
+      } else {
+        badge.style.display = 'none'
+      }
+    }
+  }
+
+  // Rolar para o final
+  scrollToBottom() {
+    const messagesContainer = document.getElementById('chat-messages')
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+    }
+  }
+
+  // Fechar chat
+  closeChat() {
+    if (this.currentChatId) {
+      this.socket.emit('sair_chat', { id_encomenda: this.currentChatId })
     }
 
-    // Atualizar badge de mensagens não lidas
-    updateUnreadBadge() {
-        const badge = document.getElementById('chat-unread-badge');
-        if (badge) {
-            if (this.unreadCount > 0) {
-                badge.textContent = this.unreadCount;
-                badge.style.display = 'flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-    }
+    this.currentChatId = null
+    this.messages = []
 
-    // Rolar para o final
-    scrollToBottom() {
-        const messagesContainer = document.getElementById('chat-messages');
-        if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-    }
-
-    // Fechar chat
-    closeChat() {
-        if (this.currentChatId) {
-            this.socket.emit('sair_chat', { id_encomenda: this.currentChatId });
-        }
-        
-        this.currentChatId = null;
-        this.messages = [];
-        
-        const container = document.getElementById(this.containerId);
-        if (container) {
-            container.innerHTML = `
+    const container = document.getElementById(this.containerId)
+    if (container) {
+      container.innerHTML = `
                 <div class="chat-container">
                     <div class="chat-empty">
                         <p>Chat fechado</p>
                     </div>
                 </div>
-            `;
-        }
+            `
+    }
+  }
+
+  // Escapar HTML para prevenir XSS
+  escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
+  }
+
+  // Destruir chat
+  destroy() {
+    if (this.currentChatId) {
+      this.socket.emit('sair_chat', { id_encomenda: this.currentChatId })
     }
 
-    // Escapar HTML para prevenir XSS
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Destruir chat
-    destroy() {
-        if (this.currentChatId) {
-            this.socket.emit('sair_chat', { id_encomenda: this.currentChatId });
-        }
-        
-        this.socket.off('nova_mensagem');
-        this.socket.off('mensagem_lida');
-        this.socket.off('usuario_digitando');
-    }
+    this.socket.off('nova_mensagem')
+    this.socket.off('mensagem_lida')
+    this.socket.off('usuario_digitando')
+  }
 }
 
 // Estilos CSS para o chat
-const chatStyles = document.createElement('style');
+const chatStyles = document.createElement('style')
 chatStyles.textContent = `
     .chat-container {
         background: white;
@@ -578,5 +620,5 @@ chatStyles.textContent = `
             max-width: 85%;
         }
     }
-`;
-document.head.appendChild(chatStyles);
+`
+document.head.appendChild(chatStyles)
