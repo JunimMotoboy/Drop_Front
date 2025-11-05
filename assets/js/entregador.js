@@ -321,12 +321,14 @@ async function atualizarStatus(novoStatus) {
 }
 
 // Abrir mapa
-function openMapModal() {
+async function openMapModal() {
   const mapSection = document.getElementById('map-section')
   mapSection.style.display = 'block'
 
+  console.log('🗺️ Abrindo mapa para entrega:', currentEntrega)
+
   // Aguardar o DOM atualizar antes de inicializar/redimensionar o mapa
-  setTimeout(() => {
+  setTimeout(async () => {
     if (!mapManager) {
       mapManager = new MapManager('map')
       mapManager.init()
@@ -335,30 +337,119 @@ function openMapModal() {
       mapManager.resize()
     }
 
-    mapManager.getUserLocation((error, myLocation) => {
+    mapManager.getUserLocation(async (error, myLocation) => {
       if (error) {
+        console.error('❌ Erro ao obter localização:', error)
         showToast('Erro ao obter localização', 'error')
         return
       }
 
+      console.log('📍 Localização do entregador:', myLocation)
+
       // Limpar marcadores anteriores
       mapManager.clearMarkers()
+      mapManager.clearRoute()
 
+      // Adicionar marcador do entregador
       mapManager.addMarker('entregador', myLocation.lat, myLocation.lng, {
         icon: 'delivery',
         popup: 'Você está aqui',
       })
+      console.log('✅ Marcador do entregador adicionado')
 
       // Adicionar destino se disponível
+      console.log('🔍 Objeto completo da entrega:', currentEntrega)
+      console.log(
+        '🔍 Verificando tipo de entrega:',
+        currentEntrega.tipo_entrega
+      )
+      console.log('🔍 Endereço:', currentEntrega.endereco_entrega)
+
+      // Verificar se existe endereço (independente do tipo)
       if (
-        currentEntrega.tipo_entrega === 'agendada' &&
-        currentEntrega.endereco_entrega
+        currentEntrega.endereco_entrega &&
+        currentEntrega.endereco_entrega.trim() !== ''
       ) {
-        // Aqui você poderia geocodificar o endereço
-        // Por enquanto, apenas centralizamos no entregador
-        mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
+        try {
+          // Geocodificar o endereço do cliente
+          console.log(
+            '🔍 Geocodificando endereço:',
+            currentEntrega.endereco_entrega
+          )
+          showToast('Localizando endereço do cliente...', 'info')
+
+          const clientLocation = await geocodeAddress(
+            currentEntrega.endereco_entrega
+          )
+
+          console.log('✅ Endereço geocodificado:', clientLocation)
+
+          // Adicionar marcador do cliente
+          console.log(
+            '📍 Adicionando marcador do cliente em:',
+            clientLocation.lat,
+            clientLocation.lng
+          )
+
+          const clientMarker = mapManager.addMarker(
+            'cliente',
+            clientLocation.lat,
+            clientLocation.lng,
+            {
+              icon: 'destination',
+              popup: `Cliente: ${currentEntrega.nome_cliente}`,
+            }
+          )
+
+          console.log('✅ Marcador do cliente adicionado:', clientMarker)
+
+          // Calcular e desenhar rota
+          console.log('🛣️ Calculando rota...')
+          const route = await calculateRoute(
+            myLocation.lat,
+            myLocation.lng,
+            clientLocation.lat,
+            clientLocation.lng
+          )
+
+          console.log('✅ Rota calculada:', route)
+
+          // Desenhar rota no mapa
+          mapManager.drawRoute(route.coordinates, '#2563eb')
+          console.log('✅ Rota desenhada no mapa')
+
+          // Atualizar informações de distância e tempo
+          document.getElementById('map-distance').textContent = formatDistance(
+            route.distance
+          )
+          document.getElementById('map-time').textContent = formatDuration(
+            route.duration
+          )
+
+          console.log('✅ Informações de distância e tempo atualizadas')
+
+          // Ajustar zoom para mostrar ambos os marcadores
+          mapManager.fitAllMarkers()
+          console.log('✅ Zoom ajustado para mostrar todos os marcadores')
+
+          showToast('Rota calculada com sucesso!', 'success')
+        } catch (error) {
+          console.error('❌ Erro ao processar endereço:', error)
+          showToast(
+            'Não foi possível localizar o endereço do cliente',
+            'warning'
+          )
+          // Centralizar apenas no entregador
+          mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
+        }
       } else {
+        console.log(
+          'ℹ️ Entrega móvel ou sem endereço - apenas marcador do entregador'
+        )
+        // Para entregas móveis, apenas centralizar no entregador
         mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
+        document.getElementById('map-distance').textContent = '-'
+        document.getElementById('map-time').textContent = '-'
       }
     })
   }, 200)

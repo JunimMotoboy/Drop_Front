@@ -228,20 +228,29 @@ class MapManager {
 
   // Desenhar rota entre dois pontos
   drawRoute(points, color = '#2563eb') {
+    console.log('🎨 Desenhando rota com', points.length, 'pontos')
+    console.log('🎨 Primeiros 3 pontos:', points.slice(0, 3))
+
     if (this.routeLine) {
+      console.log('🗑️ Removendo rota anterior')
       this.map.removeLayer(this.routeLine)
     }
 
     this.routeLine = L.polyline(points, {
       color: color,
-      weight: 4,
-      opacity: 0.7,
+      weight: 6,
+      opacity: 0.8,
       smoothFactor: 1,
     }).addTo(this.map)
+
+    console.log('✅ Polyline adicionada ao mapa:', this.routeLine)
+    console.log('📍 Bounds da rota:', this.routeLine.getBounds())
 
     this.map.fitBounds(this.routeLine.getBounds(), {
       padding: [50, 50],
     })
+
+    console.log('✅ Zoom ajustado para mostrar a rota')
   }
 
   // Centralizar mapa em uma posição
@@ -401,27 +410,47 @@ class MapManager {
 const mapStyles = document.createElement('style')
 mapStyles.textContent = `
     .custom-marker {
-        background: transparent;
-        border: none;
+        background: transparent !important;
+        border: none !important;
+        z-index: 1000 !important;
     }
 
     .marker-pin {
-        font-size: 24px;
+        font-size: 32px !important;
         text-align: center;
         filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         animation: bounce 2s infinite;
+        position: relative;
+        z-index: 1000 !important;
     }
 
     .user-pin {
-        color: #2563eb;
+        color: #2563eb !important;
     }
 
     .delivery-pin {
-        color: #10b981;
+        color: #10b981 !important;
     }
 
     .destination-pin {
-        color: #ef4444;
+        color: #ef4444 !important;
+    }
+
+    /* Garantir que a polyline seja visível */
+    .leaflet-overlay-pane svg {
+        z-index: 400 !important;
+    }
+    
+    .leaflet-overlay-pane svg path {
+        stroke: #2563eb !important;
+        stroke-width: 6 !important;
+        stroke-opacity: 0.8 !important;
+        fill: none !important;
+    }
+
+    /* Garantir que os marcadores fiquem acima */
+    .leaflet-marker-pane {
+        z-index: 600 !important;
     }
 
     @keyframes bounce {

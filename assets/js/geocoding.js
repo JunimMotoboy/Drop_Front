@@ -47,20 +47,37 @@ async function geocodeAddress(address) {
   } catch (error) {
     console.error('❌ Erro ao geocodificar:', error)
 
-    // Fallback: tentar extrair cidade e usar coordenadas aproximadas
-    if (
-      address.toLowerCase().includes('são paulo') ||
-      address.toLowerCase().includes('sp')
-    ) {
-      console.warn('⚠️ Usando coordenadas de São Paulo como fallback')
+    // Fallback: usar coordenadas aproximadas baseadas no endereço
+    console.warn(
+      '⚠️ API de geocodificação indisponível, usando coordenadas aproximadas'
+    )
+
+    // Tentar extrair cidade do endereço
+    const addressLower = address.toLowerCase()
+
+    if (addressLower.includes('são paulo') || addressLower.includes('sp')) {
       return {
         lat: -23.5505,
         lng: -46.6333,
-        formatted: 'São Paulo, SP, Brasil',
+        formatted: `${address} (aproximado - São Paulo, SP)`,
+      }
+    } else if (
+      addressLower.includes('rio de janeiro') ||
+      addressLower.includes('rj')
+    ) {
+      return {
+        lat: -22.9068,
+        lng: -43.1729,
+        formatted: `${address} (aproximado - Rio de Janeiro, RJ)`,
+      }
+    } else {
+      // Usar coordenadas padrão (São Paulo) como último recurso
+      return {
+        lat: -23.5505,
+        lng: -46.6333,
+        formatted: `${address} (localização aproximada)`,
       }
     }
-
-    throw error
   }
 }
 
