@@ -36,7 +36,12 @@ function loadUserInfo() {
 
 // Carregar encomendas
 async function loadEncomendas() {
+  const loadingText = document.getElementById('loading-text')
+  const originalText = loadingText.textContent
+
   try {
+    // Atualizar texto de loading para informar sobre possível inicialização
+    loadingText.textContent = 'Conectando ao servidor...'
     logApiDebug('Carregando encomendas', 'Iniciando requisição')
 
     const result = await fetchApi(
@@ -60,9 +65,12 @@ async function loadEncomendas() {
     }
   } catch (error) {
     console.error('Erro ao carregar encomendas:', error)
-    showToast('Erro ao conectar com o servidor', 'error')
+    showToast('Erro ao conectar com o servidor. O serviço pode estar inicializando.', 'error')
     encomendas = []
     renderEncomendas()
+  } finally {
+    // Restaurar texto original
+    loadingText.textContent = originalText
   }
 }
 
@@ -417,20 +425,39 @@ function toggleEntregaFields() {
   const tipoEntrega = document.getElementById('tipo_entrega').value
   const agendadaFields = document.getElementById('agendada-fields')
   const movelFields = document.getElementById('movel-fields')
+  const dataAgendada = document.getElementById('data_agendada')
+  const enderecoEntrega = document.getElementById('endereco_entrega')
 
   if (tipoEntrega === 'agendada') {
     agendadaFields.style.display = 'block'
     movelFields.style.display = 'none'
-    document.getElementById('data_agendada').required = true
-    document.getElementById('endereco_entrega').required = true
+    
+    // Aplicar required e definir data mínima
+    dataAgendada.required = true
+    enderecoEntrega.required = true
+    
+    // Definir data mínima como agora
+    const now = new Date()
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()) // Ajustar para timezone local
+    dataAgendada.min = now.toISOString().slice(0, 16)
+    
+    console.log('✅ [CLIENTE] Campos de entrega agendada ativados')
   } else if (tipoEntrega === 'movel') {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'block'
-    document.getElementById('data_agendada').required = false
-    document.getElementById('endereco_entrega').required = false
+    
+    // Remover required
+    dataAgendada.required = false
+    enderecoEntrega.required = false
+    
+    console.log('✅ [CLIENTE] Campos de entrega móvel ativados')
   } else {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'none'
+    
+    // Remover required
+    dataAgendada.required = false
+    enderecoEntrega.required = false
   }
 }
 
@@ -448,23 +475,67 @@ async function criarEncomenda() {
     return
   }
 
-  const encomendaData = {
-    codigo_rastreio: document.getElementById('codigo_rastreio').value || null,
-    loja_origem: document.getElementById('loja_origem').value,
-    valor: parseFloat(document.getElementById('valor').value),
-    tipo_entrega: tipoEntrega,
-    observacoes: document.getElementById('observacoes').value || null,
+  // Validar campos básicos
+  const lojaOrigem = document.getElementById('loja_origem').value.trim()
+  const valor = document.getElementById('valor').value
+
+  if (!lojaOrigem) {
+    showToast('Por favor, informe a loja de origem', 'error')
+    return
   }
 
+  if (!valor || parseFloat(valor) <= 0) {
+    showToast('Por favor, informe um valor válido', 'error')
+    return
+  }
+
+  const encomendaData = {
+    codigo_rastreio: document.getElementById('codigo_rastreio').value.trim() || null,
+    loja_origem: lojaOrigem,
+    valor: parseFloat(valor),
+    tipo_entrega: tipoEntrega,
+    observacoes: document.getElementById('observacoes').value.trim() || null,
+  }
+
+  // Validação específica para entrega agendada
   if (tipoEntrega === 'agendada') {
-    encomendaData.data_agendada = document.getElementById('data_agendada').value
-    encomendaData.endereco_entrega =
-      document.getElementById('endereco_entrega').value
+    const dataAgendada = document.getElementById('data_agendada').value
+    const enderecoEntrega = document.getElementById('endereco_entrega').value.trim()
+
+    // Validar campos obrigatórios
+    if (!dataAgendada) {
+      showToast('Por favor, informe a data e hora da entrega', 'error')
+      console.error('❌ [CLIENTE] Data agendada não informada')
+      return
+    }
+
+    if (!enderecoEntrega) {
+      showToast('Por favor, informe o endereço de entrega', 'error')
+      console.error('❌ [CLIENTE] Endereço de entrega não informado')
+      return
+    }
+
+    // Validar se a data não está no passado
+    const dataEscolhida = new Date(dataAgendada)
+    const agora = new Date()
+    
+    if (dataEscolhida <= agora) {
+      showToast('A data de entrega deve ser futura', 'error')
+      console.error('❌ [CLIENTE] Data de entrega no passado')
+      return
+    }
+
+    // Formatar data para ISO 8601 completo com timezone
+    const dataFormatada = new Date(dataAgendada).toISOString()
+    
+    encomendaData.data_agendada = dataFormatada
+    encomendaData.endereco_entrega = enderecoEntrega
 
     // 🔍 DEBUG: Verificar dados de entrega agendada
     console.log('📅 [CLIENTE] Dados de entrega agendada:', {
-      data: encomendaData.data_agendada,
-      endereco: encomendaData.endereco_entrega,
+      dataOriginal: dataAgendada,
+      dataFormatada: dataFormatada,
+      endereco: enderecoEntrega,
     })
   }
 
@@ -500,11 +571,18 @@ async function criarEncomenda() {
     } else {
       const data = await response.json()
       console.error('❌ [CLIENTE] Erro na resposta:', data)
+      console.error('❌ [CLIENTE] Detalhes do erro:', {
+        status: response.status,
+        statusText: response.statusText,
+        message: data.message,
+        error: data.error,
+      })
       showToast(data.message || 'Erro ao criar encomenda', 'error')
     }
   } catch (error) {
     console.error('❌ [CLIENTE] Erro ao criar encomenda:', error)
-    showToast('Erro ao criar encomenda', 'error')
+    console.error('❌ [CLIENTE] Stack trace:', error.stack)
+    showToast('Erro ao conectar com o servidor', 'error')
   }
 }
 

@@ -24,7 +24,7 @@ function logout() {
   window.location.href = '../index.html'
 }
 
-// Função para fazer requisições autenticadas
+// Função para fazer requisições autenticadas com retry automático
 async function fetchWithAuth(url, options = {}) {
   const token = getToken()
 
@@ -39,23 +39,62 @@ async function fetchWithAuth(url, options = {}) {
     ...options.headers,
   }
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
+  const maxRetries = options.maxRetries || 3
+  const baseDelay = options.baseDelay || 1000 // 1 segundo
+  const maxDelay = options.maxDelay || 10000 // 10 segundos
 
-    // Se não autorizado, redirecionar para login
-    if (response.status === 401 || response.status === 403) {
-      logout()
-      return
+  let lastError
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 [AUTH] Tentativa ${attempt + 1}/${maxRetries + 1} para ${url}`)
+
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      })
+
+      // Se não autorizado, redirecionar para login (não retry)
+      if (response.status === 401 || response.status === 403) {
+        logout()
+        return
+      }
+
+      // Se sucesso ou erro não relacionado ao servidor, retornar
+      if (response.ok || response.status < 500) {
+        return response
+      }
+
+      // Se erro 5xx (problema do servidor), pode ser cold start, tentar novamente
+      if (response.status >= 500 && attempt < maxRetries) {
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
+        console.log(`⏳ [AUTH] Servidor indisponível (${response.status}), tentando novamente em ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      // Se chegou aqui, é erro final
+      return response
+
+    } catch (error) {
+      lastError = error
+
+      // Se é erro de rede e ainda há tentativas, aguardar e tentar novamente
+      if (attempt < maxRetries) {
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
+        console.log(`🌐 [AUTH] Erro de conexão, tentando novamente em ${delay}ms...`, error.message)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      // Se é a última tentativa, lançar o erro
+      console.error('❌ [AUTH] Todas as tentativas falharam:', error)
+      throw error
     }
-
-    return response
-  } catch (error) {
-    console.error('Erro na requisição:', error)
-    throw error
   }
+
+  // Se chegou aqui, todas as tentativas falharam
+  throw lastError
 }
 
 // Verificar autenticação ao carregar páginas protegidas

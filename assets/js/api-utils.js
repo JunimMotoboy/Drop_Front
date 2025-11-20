@@ -150,14 +150,22 @@ async function processApiResponse(fetchResponse, dataKey = 'data') {
  */
 async function fetchApi(url, options = {}, dataKey = 'data') {
   try {
-    const response = await fetchWithAuth(url, options)
+    // Configurar opções de retry para cold start do Render
+    const retryOptions = {
+      maxRetries: 5, // Mais tentativas para cold start
+      baseDelay: 2000, // Delay inicial maior
+      maxDelay: 15000, // Delay máximo maior
+      ...options,
+    }
+
+    const response = await fetchWithAuth(url, retryOptions)
     return await processApiResponse(response, dataKey)
   } catch (error) {
     console.error('Erro na requisição:', error)
     return {
       success: false,
       data: null,
-      message: 'Erro ao conectar com o servidor',
+      message: 'Erro ao conectar com o servidor. O serviço pode estar inicializando.',
     }
   }
 }
