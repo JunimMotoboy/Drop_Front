@@ -540,8 +540,19 @@ function toggleLocationSharing() {
 
 // Carregar histórico
 async function loadHistorico() {
-  const dataInicio = document.getElementById('filter-data-inicio').value
-  const dataFim = document.getElementById('filter-data-fim').value
+  const container = document.getElementById('historico-list')
+
+  // Mostrar loading
+  container.innerHTML = `
+    <div class="loading-container">
+      <div class="loading"></div>
+      <p>Carregando histórico...</p>
+    </div>
+  `
+
+  const dataInicio = document.getElementById('filter-hist-data-inicio').value
+  const dataFim = document.getElementById('filter-hist-data-fim').value
+  const tipoFiltro = document.getElementById('filter-hist-tipo').value
 
   let url = `${API_URL}/encomendas/historico`
   const params = new URLSearchParams()
@@ -556,14 +567,44 @@ async function loadHistorico() {
 
     if (response.ok) {
       const data = await response.json()
-      historico = data.entregas || []
+      console.log('Dados do histórico recebidos:', data)
+
+      // Usar extractApiData para tratamento consistente
+      // O backend retorna { success: true, data: { historico: [...] } }
+      historico = extractApiData(data, 'historico')
+
+      // Aplicar filtro de tipo se selecionado
+      if (tipoFiltro) {
+        historico = historico.filter((e) => e.tipo_entrega === tipoFiltro)
+      }
+
+      console.log('Histórico carregado:', historico.length, 'entregas')
       renderHistorico()
+      updateHistoricoStats()
     } else {
-      showToast('Erro ao carregar histórico', 'error')
+      const errorData = await response.json()
+      showToast(
+        getApiErrorMessage(errorData, 'Erro ao carregar histórico'),
+        'error'
+      )
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-circle"></i>
+          <h3>Erro ao carregar histórico</h3>
+          <p>Tente novamente mais tarde</p>
+        </div>
+      `
     }
   } catch (error) {
-    console.error('Erro:', error)
-    showToast('Erro ao carregar histórico', 'error')
+    console.error('Erro ao carregar histórico:', error)
+    showToast('Erro ao conectar com o servidor', 'error')
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <h3>Erro ao carregar histórico</h3>
+        <p>Verifique sua conexão e tente novamente</p>
+      </div>
+    `
   }
 }
 
@@ -573,53 +614,155 @@ function renderHistorico() {
 
   if (historico.length === 0) {
     container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-history"></i>
-                <h3>Nenhuma entrega no histórico</h3>
-                <p>Suas entregas concluídas aparecerão aqui</p>
-            </div>
-        `
+      <div class="empty-state">
+        <i class="fas fa-history"></i>
+        <h3>Nenhuma entrega no histórico</h3>
+        <p>Suas entregas concluídas aparecerão aqui</p>
+      </div>
+    `
     return
   }
 
   container.innerHTML = `
-        <table class="historico-table">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Cliente</th>
-                    <th>Loja</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${historico
-                  .map(
-                    (entrega) => `
-                    <tr>
-                        <td>#${
-                          entrega.codigo_rastreio || entrega.id_encomenda
-                        }</td>
-                        <td>${entrega.nome_cliente}</td>
-                        <td>${entrega.loja_origem}</td>
-                        <td>R$ ${parseFloat(entrega.valor).toFixed(2)}</td>
-                        <td>${formatDate(entrega.atualizado_em)}</td>
-                        <td><span class="status-badge entregue">Entregue</span></td>
-                    </tr>
-                `
-                  )
-                  .join('')}
-            </tbody>
-        </table>
-    `
+    <table class="historico-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Cliente</th>
+          <th>Loja</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Data</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${historico
+          .map((entrega) => {
+            const tipoEntrega =
+              entrega.tipo_entrega === 'agendada'
+                ? 'Agendada'
+                : entrega.tipo_entrega === 'movel'
+                ? 'Móvel'
+                : entrega.tipo_entrega || 'N/D'
+
+            return `
+              <tr onclick="verDetalhesHistorico(${entrega.id_encomenda})">
+                <td>#${entrega.codigo_rastreio || entrega.id_encomenda}</td>
+                <td>${entrega.nome_cliente}</td>
+                <td>${entrega.loja_origem}</td>
+                <td>${tipoEntrega}</td>
+                <td>R$ ${parseFloat(entrega.valor).toFixed(2)}</td>
+                <td>${formatDate(entrega.atualizado_em)}</td>
+                <td><span class="status-badge entregue">Entregue</span></td>
+              </tr>
+            `
+          })
+          .join('')}
+      </tbody>
+    </table>
+  `
 }
 
-// Limpar filtros de data
-function clearDateFilters() {
-  document.getElementById('filter-data-inicio').value = ''
-  document.getElementById('filter-data-fim').value = ''
+// Ver detalhes de entrega do histórico
+function verDetalhesHistorico(idEncomenda) {
+  const entrega = historico.find((e) => e.id_encomenda === idEncomenda)
+
+  if (!entrega) {
+    showToast('Entrega não encontrada', 'error')
+    return
+  }
+
+  // Usar a mesma função de detalhes, mas sem botões de ação
+  currentEntrega = entrega
+
+  // Preencher informações
+  document.getElementById('det-codigo').textContent =
+    entrega.codigo_rastreio || `#${entrega.id_encomenda}`
+  document.getElementById('det-cliente').textContent = entrega.nome_cliente
+  document.getElementById('det-loja').textContent = entrega.loja_origem
+  document.getElementById('det-valor').textContent = `R$ ${parseFloat(
+    entrega.valor
+  ).toFixed(2)}`
+
+  const status = formatStatus('entregue')
+  document.getElementById(
+    'det-status'
+  ).innerHTML = `<span class="entrega-status ${status.class}">${status.text}</span>`
+
+  const tipoEntregaTexto =
+    entrega.tipo_entrega === 'agendada'
+      ? 'Agendada'
+      : entrega.tipo_entrega === 'movel'
+      ? 'Móvel'
+      : entrega.tipo_entrega || 'Não definido'
+  document.getElementById('det-tipo').textContent = tipoEntregaTexto
+
+  // Endereço e agendamento
+  if (entrega.tipo_entrega === 'agendada') {
+    document.getElementById('det-endereco').textContent =
+      entrega.endereco_entrega || 'Não informado'
+    document.getElementById('det-endereco-container').style.display = 'flex'
+
+    if (entrega.data_agendada) {
+      document.getElementById('det-agendamento').textContent = formatDate(
+        entrega.data_agendada
+      )
+      document.getElementById('det-agendamento-container').style.display =
+        'flex'
+    } else {
+      document.getElementById('det-agendamento-container').style.display =
+        'none'
+    }
+  } else {
+    document.getElementById('det-endereco-container').style.display = 'none'
+    document.getElementById('det-agendamento-container').style.display = 'none'
+  }
+
+  // Observações
+  if (entrega.observacoes) {
+    document.getElementById('det-obs').textContent = entrega.observacoes
+    document.getElementById('det-obs-container').style.display = 'flex'
+  } else {
+    document.getElementById('det-obs-container').style.display = 'none'
+  }
+
+  // Esconder botões de ação (entrega já concluída)
+  document.getElementById('btn-aceitar').style.display = 'none'
+  document.getElementById('btn-concluir').style.display = 'none'
+
+  // Esconder seções
+  document.getElementById('map-section').style.display = 'none'
+  document.getElementById('chat-section').style.display = 'none'
+
+  openModal('modal-detalhes')
+}
+
+// Atualizar estatísticas do histórico
+function updateHistoricoStats() {
+  const total = historico.length
+  const agendadas = historico.filter(
+    (e) => e.tipo_entrega === 'agendada'
+  ).length
+  const moveis = historico.filter((e) => e.tipo_entrega === 'movel').length
+  const valorTotal = historico.reduce(
+    (sum, e) => sum + parseFloat(e.valor || 0),
+    0
+  )
+
+  document.getElementById('stat-hist-total').textContent = total
+  document.getElementById('stat-hist-agendadas').textContent = agendadas
+  document.getElementById('stat-hist-moveis').textContent = moveis
+  document.getElementById(
+    'stat-hist-valor'
+  ).textContent = `R$ ${valorTotal.toFixed(2)}`
+}
+
+// Limpar filtros do histórico
+function clearHistoricoFilters() {
+  document.getElementById('filter-hist-data-inicio').value = ''
+  document.getElementById('filter-hist-data-fim').value = ''
+  document.getElementById('filter-hist-tipo').value = ''
   loadHistorico()
 }
 

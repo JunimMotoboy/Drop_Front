@@ -427,8 +427,14 @@
   color: var(--text-color);
 }
 
+.historico-table tbody tr {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
 .historico-table tbody tr:hover {
   background: var(--light-color);
+  transform: translateX(3px);
 }
 
 .status-badge {
