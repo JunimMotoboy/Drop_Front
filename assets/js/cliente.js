@@ -37,11 +37,13 @@ function loadUserInfo() {
 // Carregar encomendas
 async function loadEncomendas() {
   const loadingText = document.getElementById('loading-text')
-  const originalText = loadingText.textContent
+  const originalText = loadingText ? loadingText.textContent : ''
 
   try {
     // Atualizar texto de loading para informar sobre possível inicialização
-    loadingText.textContent = 'Conectando ao servidor...'
+    if (loadingText) {
+      loadingText.textContent = 'Conectando ao servidor...'
+    }
     logApiDebug('Carregando encomendas', 'Iniciando requisição')
 
     const result = await fetchApi(
@@ -65,12 +67,17 @@ async function loadEncomendas() {
     }
   } catch (error) {
     console.error('Erro ao carregar encomendas:', error)
-    showToast('Erro ao conectar com o servidor. O serviço pode estar inicializando.', 'error')
+    showToast(
+      'Erro ao conectar com o servidor. O serviço pode estar inicializando.',
+      'error'
+    )
     encomendas = []
     renderEncomendas()
   } finally {
     // Restaurar texto original
-    loadingText.textContent = originalText
+    if (loadingText && originalText) {
+      loadingText.textContent = originalText
+    }
   }
 }
 
@@ -367,18 +374,55 @@ function showTracking() {
 
 // Abrir chat
 function openChatModal() {
-  const chatSection = document.getElementById('chat-section')
-  chatSection.style.display = 'block'
+  console.log('🔵 [CLIENTE] Abrindo chat modal')
+  console.log('🔵 [CLIENTE] Encomenda atual:', currentEncomenda)
+  console.log('🔵 [CLIENTE] Socket existe?', !!socket)
+  console.log('🔵 [CLIENTE] ChatManager existe?', !!chatManager)
 
-  // Inicializar chat se ainda não foi
-  if (!chatManager) {
-    chatManager = new ChatManager('chat-container', socket)
+  const chatSection = document.getElementById('chat-section')
+  if (!chatSection) {
+    console.error('❌ [CLIENTE] Seção de chat não encontrada!')
+    showToast('Erro ao abrir chat', 'error')
+    return
   }
 
+  chatSection.style.display = 'block'
+
+  // Verificar se socket está conectado
+  if (!socket || !socket.connected) {
+    console.warn('⚠️ [CLIENTE] Socket não conectado, reconectando...')
+    socket = connectSocket()
+
+    // Aguardar conexão
+    setTimeout(() => {
+      initializeChatManager()
+    }, 1000)
+  } else {
+    initializeChatManager()
+  }
+}
+
+// Função auxiliar para inicializar o chat manager
+function initializeChatManager() {
+  // Destruir chat anterior se existir
+  if (chatManager) {
+    console.log('🔄 [CLIENTE] Destruindo chat anterior')
+    chatManager.destroy()
+    chatManager = null
+  }
+
+  // Criar nova instância
+  console.log('🆕 [CLIENTE] Criando nova instância do ChatManager')
+  chatManager = new ChatManager('chat-container', socket)
+
   // Abrir chat para esta encomenda
+  console.log(
+    '📂 [CLIENTE] Abrindo chat para encomenda:',
+    currentEncomenda.id_encomenda
+  )
   chatManager.openChat(
     currentEncomenda.id_encomenda,
-    currentEncomenda.nome_entregador
+    currentEncomenda.nome_entregador || 'Entregador'
   )
 }
 
@@ -431,30 +475,30 @@ function toggleEntregaFields() {
   if (tipoEntrega === 'agendada') {
     agendadaFields.style.display = 'block'
     movelFields.style.display = 'none'
-    
+
     // Aplicar required e definir data mínima
     dataAgendada.required = true
     enderecoEntrega.required = true
-    
+
     // Definir data mínima como agora
     const now = new Date()
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset()) // Ajustar para timezone local
     dataAgendada.min = now.toISOString().slice(0, 16)
-    
+
     console.log('✅ [CLIENTE] Campos de entrega agendada ativados')
   } else if (tipoEntrega === 'movel') {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'block'
-    
+
     // Remover required
     dataAgendada.required = false
     enderecoEntrega.required = false
-    
+
     console.log('✅ [CLIENTE] Campos de entrega móvel ativados')
   } else {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'none'
-    
+
     // Remover required
     dataAgendada.required = false
     enderecoEntrega.required = false
@@ -490,7 +534,8 @@ async function criarEncomenda() {
   }
 
   const encomendaData = {
-    codigo_rastreio: document.getElementById('codigo_rastreio').value.trim() || null,
+    codigo_rastreio:
+      document.getElementById('codigo_rastreio').value.trim() || null,
     loja_origem: lojaOrigem,
     valor: parseFloat(valor),
     tipo_entrega: tipoEntrega,
@@ -500,7 +545,9 @@ async function criarEncomenda() {
   // Validação específica para entrega agendada
   if (tipoEntrega === 'agendada') {
     const dataAgendada = document.getElementById('data_agendada').value
-    const enderecoEntrega = document.getElementById('endereco_entrega').value.trim()
+    const enderecoEntrega = document
+      .getElementById('endereco_entrega')
+      .value.trim()
 
     // Validar campos obrigatórios
     if (!dataAgendada) {
@@ -518,7 +565,7 @@ async function criarEncomenda() {
     // Validar se a data não está no passado
     const dataEscolhida = new Date(dataAgendada)
     const agora = new Date()
-    
+
     if (dataEscolhida <= agora) {
       showToast('A data de entrega deve ser futura', 'error')
       console.error('❌ [CLIENTE] Data de entrega no passado')
@@ -527,7 +574,7 @@ async function criarEncomenda() {
 
     // Formatar data para ISO 8601 completo com timezone
     const dataFormatada = new Date(dataAgendada).toISOString()
-    
+
     encomendaData.data_agendada = dataFormatada
     encomendaData.endereco_entrega = enderecoEntrega
 

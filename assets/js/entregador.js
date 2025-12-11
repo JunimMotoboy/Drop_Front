@@ -476,14 +476,56 @@ async function openMapModal() {
 
 // Abrir chat
 function openChatModal() {
-  const chatSection = document.getElementById('chat-section')
-  chatSection.style.display = 'block'
+  console.log('🔵 [ENTREGADOR] Abrindo chat modal')
+  console.log('🔵 [ENTREGADOR] Entrega atual:', currentEntrega)
+  console.log('🔵 [ENTREGADOR] Socket existe?', !!socket)
+  console.log('🔵 [ENTREGADOR] ChatManager existe?', !!chatManager)
 
-  if (!chatManager) {
-    chatManager = new ChatManager('chat-container', socket)
+  const chatSection = document.getElementById('chat-section')
+  if (!chatSection) {
+    console.error('❌ [ENTREGADOR] Seção de chat não encontrada!')
+    showToast('Erro ao abrir chat', 'error')
+    return
   }
 
-  chatManager.openChat(currentEntrega.id_encomenda, currentEntrega.nome_cliente)
+  chatSection.style.display = 'block'
+
+  // Verificar se socket está conectado
+  if (!socket || !socket.connected) {
+    console.warn('⚠️ [ENTREGADOR] Socket não conectado, reconectando...')
+    socket = connectSocket()
+
+    // Aguardar conexão
+    setTimeout(() => {
+      initializeChatManager()
+    }, 1000)
+  } else {
+    initializeChatManager()
+  }
+}
+
+// Função auxiliar para inicializar o chat manager
+function initializeChatManager() {
+  // Destruir chat anterior se existir
+  if (chatManager) {
+    console.log('🔄 [ENTREGADOR] Destruindo chat anterior')
+    chatManager.destroy()
+    chatManager = null
+  }
+
+  // Criar nova instância
+  console.log('🆕 [ENTREGADOR] Criando nova instância do ChatManager')
+  chatManager = new ChatManager('chat-container', socket)
+
+  // Abrir chat para esta entrega
+  console.log(
+    '📂 [ENTREGADOR] Abrindo chat para entrega:',
+    currentEntrega.id_encomenda
+  )
+  chatManager.openChat(
+    currentEntrega.id_encomenda,
+    currentEntrega.nome_cliente || 'Cliente'
+  )
 }
 
 // Alternar compartilhamento de localização
