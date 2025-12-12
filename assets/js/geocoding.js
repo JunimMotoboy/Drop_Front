@@ -1,83 +1,191 @@
 // ===== GEOCODIFICAÇÃO COM OPENCAGE DATA =====
 
 // API Key do OpenCage (gratuita - 2500 requisições/dia)
-const OPENCAGE_API_KEY = '8c0892e8c224444d8c5e0e6e4e961d8e' // Chave de exemplo - substitua pela sua
+const OPENCAGE_API_KEY = 'ecc0112f185944b994704f6c478f7d4a'
 
 // Cache de geocodificação para evitar requisições repetidas
 const geocodeCache = new Map()
 
+// Limites geográficos do Brasil
+const BRAZIL_BOUNDS = {
+  minLat: -33.75,
+  maxLat: 5.27,
+  minLng: -73.99,
+  maxLng: -28.84,
+}
+
+/**
+ * Validar se coordenadas estão dentro do Brasil
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {boolean}
+ */
+function isValidBrazilianCoordinates(lat, lng) {
+  return (
+    lat >= BRAZIL_BOUNDS.minLat &&
+    lat <= BRAZIL_BOUNDS.maxLat &&
+    lng >= BRAZIL_BOUNDS.minLng &&
+    lng <= BRAZIL_BOUNDS.maxLng
+  )
+}
+
+/**
+ * Validar formato de coordenadas
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {boolean}
+ */
+function isValidCoordinates(lat, lng) {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    !isNaN(lat) &&
+    !isNaN(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 /**
  * Geocodificar endereço (converter endereço em coordenadas)
  * @param {string} address - Endereço para geocodificar
+ * @param {number} retries - Número de tentativas (padrão: 2)
  * @returns {Promise<{lat: number, lng: number, formatted: string}>}
  */
-async function geocodeAddress(address) {
-  // Verificar cache
-  if (geocodeCache.has(address)) {
-    console.log('📍 Usando endereço do cache:', address)
-    return geocodeCache.get(address)
+async function geocodeAddress(address, retries = 2) {
+  // Validar entrada
+  if (!address || typeof address !== 'string' || address.trim() === '') {
+    throw new Error('Endereço inválido')
   }
 
-  try {
-    console.log('🔍 Geocodificando endereço:', address)
+  const normalizedAddress = address.trim()
 
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-      address
-    )}&key=${OPENCAGE_API_KEY}&language=pt&countrycode=br`
+  // Verificar cache
+  if (geocodeCache.has(normalizedAddress)) {
+    console.log('📍 Usando endereço do cache:', normalizedAddress)
+    return geocodeCache.get(normalizedAddress)
+  }
 
-    const response = await fetch(url)
-    const data = await response.json()
+  let lastError = null
 
-    if (data.results && data.results.length > 0) {
-      const result = data.results[0]
-      const location = {
-        lat: result.geometry.lat,
-        lng: result.geometry.lng,
-        formatted: result.formatted,
+  // Tentar com retry
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`🔄 Tentativa ${attempt + 1} de ${retries + 1}...`)
+        // Aguardar antes de tentar novamente
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
       }
 
-      // Salvar no cache
-      geocodeCache.set(address, location)
+      console.log('🔍 Geocodificando endereço:', normalizedAddress)
 
-      console.log('✅ Endereço geocodificado:', location)
-      return location
-    } else {
-      throw new Error('Endereço não encontrado')
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+        normalizedAddress
+      )}&key=${OPENCAGE_API_KEY}&language=pt&countrycode=br`
+
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.results && data.results.length > 0) {
+        const result = data.results[0]
+        const location = {
+          lat: result.geometry.lat,
+          lng: result.geometry.lng,
+          formatted: result.formatted,
+        }
+
+        // Validar coordenadas
+        if (!isValidCoordinates(location.lat, location.lng)) {
+          throw new Error('Coordenadas inválidas retornadas pela API')
+        }
+
+        // Verificar se está no Brasil
+        if (!isValidBrazilianCoordinates(location.lat, location.lng)) {
+          console.warn('⚠️ Coordenadas fora do Brasil:', location)
+          throw new Error('Endereço fora do Brasil')
+        }
+
+        // Salvar no cache
+        geocodeCache.set(normalizedAddress, location)
+
+        console.log('✅ Endereço geocodificado:', location)
+        return location
+      } else {
+        throw new Error('Endereço não encontrado')
+      }
+    } catch (error) {
+      lastError = error
+      console.error(`❌ Erro na tentativa ${attempt + 1}:`, error.message)
+
+      // Se não for a última tentativa, continuar
+      if (attempt < retries) {
+        continue
+      }
     }
-  } catch (error) {
-    console.error('❌ Erro ao geocodificar:', error)
+  }
 
-    // Fallback: usar coordenadas aproximadas baseadas no endereço
-    console.warn(
-      '⚠️ API de geocodificação indisponível, usando coordenadas aproximadas'
-    )
+  // Se todas as tentativas falharam, usar fallback
+  console.warn('⚠️ Todas as tentativas falharam, usando fallback')
+  return useFallbackCoordinates(normalizedAddress)
+}
 
-    // Tentar extrair cidade do endereço
-    const addressLower = address.toLowerCase()
+/**
+ * Usar coordenadas aproximadas como fallback
+ * @param {string} address - Endereço original
+ * @returns {object}
+ */
+function useFallbackCoordinates(address) {
+  const addressLower = address.toLowerCase()
 
-    if (addressLower.includes('são paulo') || addressLower.includes('sp')) {
+  // Principais cidades brasileiras
+  const cityCoordinates = {
+    'são paulo': { lat: -23.5505, lng: -46.6333, name: 'São Paulo, SP' },
+    'rio de janeiro': {
+      lat: -22.9068,
+      lng: -43.1729,
+      name: 'Rio de Janeiro, RJ',
+    },
+    brasília: { lat: -15.7939, lng: -47.8828, name: 'Brasília, DF' },
+    salvador: { lat: -12.9714, lng: -38.5014, name: 'Salvador, BA' },
+    fortaleza: { lat: -3.7172, lng: -38.5433, name: 'Fortaleza, CE' },
+    'belo horizonte': {
+      lat: -19.9167,
+      lng: -43.9345,
+      name: 'Belo Horizonte, MG',
+    },
+    manaus: { lat: -3.119, lng: -60.0217, name: 'Manaus, AM' },
+    curitiba: { lat: -25.4284, lng: -49.2733, name: 'Curitiba, PR' },
+    recife: { lat: -8.0476, lng: -34.877, name: 'Recife, PE' },
+    'porto alegre': { lat: -30.0346, lng: -51.2177, name: 'Porto Alegre, RS' },
+  }
+
+  // Tentar encontrar cidade no endereço
+  for (const [city, coords] of Object.entries(cityCoordinates)) {
+    if (addressLower.includes(city)) {
+      console.log(`📍 Usando coordenadas aproximadas de ${coords.name}`)
       return {
-        lat: -23.5505,
-        lng: -46.6333,
-        formatted: `${address} (aproximado - São Paulo, SP)`,
-      }
-    } else if (
-      addressLower.includes('rio de janeiro') ||
-      addressLower.includes('rj')
-    ) {
-      return {
-        lat: -22.9068,
-        lng: -43.1729,
-        formatted: `${address} (aproximado - Rio de Janeiro, RJ)`,
-      }
-    } else {
-      // Usar coordenadas padrão (São Paulo) como último recurso
-      return {
-        lat: -23.5505,
-        lng: -46.6333,
-        formatted: `${address} (localização aproximada)`,
+        lat: coords.lat,
+        lng: coords.lng,
+        formatted: `${address} (aproximado - ${coords.name})`,
+        isApproximate: true,
       }
     }
+  }
+
+  // Usar São Paulo como padrão
+  console.log('📍 Usando coordenadas padrão (São Paulo)')
+  return {
+    lat: -23.5505,
+    lng: -46.6333,
+    formatted: `${address} (localização aproximada - São Paulo, SP)`,
+    isApproximate: true,
   }
 }
 
@@ -85,10 +193,20 @@ async function geocodeAddress(address) {
  * Geocodificação reversa (converter coordenadas em endereço)
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
+ * @param {number} retries - Número de tentativas (padrão: 2)
  * @returns {Promise<string>}
  */
-async function reverseGeocode(lat, lng) {
-  const cacheKey = `${lat},${lng}`
+async function reverseGeocode(lat, lng, retries = 2) {
+  // Validar coordenadas
+  if (!isValidCoordinates(lat, lng)) {
+    throw new Error('Coordenadas inválidas')
+  }
+
+  if (!isValidBrazilianCoordinates(lat, lng)) {
+    console.warn('⚠️ Coordenadas fora do Brasil')
+  }
+
+  const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`
 
   // Verificar cache
   if (geocodeCache.has(cacheKey)) {
@@ -96,29 +214,52 @@ async function reverseGeocode(lat, lng) {
     return geocodeCache.get(cacheKey)
   }
 
-  try {
-    console.log('🔍 Geocodificação reversa:', { lat, lng })
+  let lastError = null
 
-    const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&language=pt`
+  // Tentar com retry
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`🔄 Tentativa ${attempt + 1} de ${retries + 1}...`)
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+      }
 
-    const response = await fetch(url)
-    const data = await response.json()
+      console.log('🔍 Geocodificação reversa:', { lat, lng })
 
-    if (data.results && data.results.length > 0) {
-      const address = data.results[0].formatted
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&language=pt`
 
-      // Salvar no cache
-      geocodeCache.set(cacheKey, address)
+      const response = await fetch(url)
 
-      console.log('✅ Endereço encontrado:', address)
-      return address
-    } else {
-      throw new Error('Endereço não encontrado para estas coordenadas')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.results && data.results.length > 0) {
+        const address = data.results[0].formatted
+
+        // Salvar no cache
+        geocodeCache.set(cacheKey, address)
+
+        console.log('✅ Endereço encontrado:', address)
+        return address
+      } else {
+        throw new Error('Endereço não encontrado para estas coordenadas')
+      }
+    } catch (error) {
+      lastError = error
+      console.error(`❌ Erro na tentativa ${attempt + 1}:`, error.message)
+
+      if (attempt < retries) {
+        continue
+      }
     }
-  } catch (error) {
-    console.error('❌ Erro na geocodificação reversa:', error)
-    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
   }
+
+  // Fallback: retornar coordenadas formatadas
+  console.warn('⚠️ Não foi possível obter endereço, retornando coordenadas')
+  return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
 }
 
 /**
@@ -282,3 +423,5 @@ window.calculateStraightDistance = calculateStraightDistance
 window.formatDistance = formatDistance
 window.formatDuration = formatDuration
 window.getAddressSuggestions = getAddressSuggestions
+window.isValidCoordinates = isValidCoordinates
+window.isValidBrazilianCoordinates = isValidBrazilianCoordinates

@@ -519,14 +519,22 @@ async function openMapModal() {
         )
         // Para entregas móveis ou sem localização, apenas centralizar no entregador
         mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
-        document.getElementById('map-distance').textContent =
-          currentEntrega.tipo_entrega === 'movel'
-            ? 'Entrega no local atual do cliente'
-            : 'Localização não disponível'
-        document.getElementById('map-time').textContent =
-          currentEntrega.tipo_entrega === 'movel'
-            ? 'Aguardando localização do cliente'
-            : '-'
+
+        if (currentEntrega.tipo_entrega === 'movel') {
+          document.getElementById('map-distance').textContent =
+            'Entrega no local atual do cliente'
+          document.getElementById('map-time').textContent =
+            'Aguardando localização do cliente'
+          showToast('Entrega móvel: aguardando localização do cliente', 'info')
+        } else {
+          document.getElementById('map-distance').textContent =
+            'Coordenadas não disponíveis'
+          document.getElementById('map-time').textContent = '-'
+          showToast(
+            '⚠️ Esta encomenda não possui coordenadas salvas. Entre em contato com o cliente para confirmar o endereço.',
+            'warning'
+          )
+        }
       }
     })
   }, 200)

@@ -1,0 +1,80 @@
+/* ===== ESTILOS DE VALIDAÇÃO DE FORMULÁRIO ===== */
+
+/* Hints dos campos */
+.field-hint {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Campo válido */
+input.valid,
+textarea.valid,
+select.valid {
+  border-color: #4caf50 !important;
+}
+
+/* Campo inválido */
+input.invalid,
+textarea.invalid,
+select.invalid {
+  border-color: #f44336 !important;
+}
+
+/* Mensagem de erro */
+.field-error {
+  display: block;
+  font-size: 0.85em;
+  color: #f44336;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Animação de validação */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.shake {
+  animation: shake 0.5s;
+}
+
+/* Loading inline */
+.inline-loading {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

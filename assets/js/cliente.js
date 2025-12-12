@@ -13,6 +13,7 @@ let chatManager = null
 let locationWatchId = null
 let locationPickerMap = null
 let selectedLocation = null
+let geocodingTimeout = null
 
 // Inicializar ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,6 +22,142 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFormListeners()
   initializeSocket()
 })
+
+// ===== FUNÇÕES DE VALIDAÇÃO DE CAMPOS =====
+
+/**
+ * Validar campo de endereço em tempo real
+ * @param {HTMLElement} field - Campo a ser validado
+ */
+function validateAddressField(field) {
+  const value = field.value.trim()
+  const minLength = field.getAttribute('minlength')
+
+  // Remover classes anteriores
+  field.classList.remove('valid', 'invalid')
+
+  // Validar comprimento mínimo
+  if (minLength && value.length > 0 && value.length < parseInt(minLength)) {
+    field.classList.add('invalid')
+    return false
+  }
+
+  // Se campo está preenchido corretamente
+  if (value.length >= (minLength || 1)) {
+    field.classList.add('valid')
+
+    // Verificar se todos os campos de endereço estão preenchidos
+    checkAllAddressFieldsFilled()
+
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Verificar se todos os campos de endereço estão preenchidos
+ * e iniciar geocodificação automática
+ */
+function checkAllAddressFieldsFilled() {
+  const rua = document.getElementById('rua').value.trim()
+  const numero = document.getElementById('numero').value.trim()
+  const bairro = document.getElementById('bairro').value.trim()
+  const cidade = document.getElementById('cidade').value.trim()
+
+  // Verificar se todos os campos estão preenchidos
+  if (rua && numero && bairro && cidade) {
+    // Limpar timeout anterior
+    if (geocodingTimeout) {
+      clearTimeout(geocodingTimeout)
+    }
+
+    // Aguardar 1 segundo após última digitação para geocodificar
+    geocodingTimeout = setTimeout(() => {
+      autoGeocodeAddress()
+    }, 1000)
+  }
+}
+
+/**
+ * Geocodificar endereço automaticamente (debounced)
+ */
+async function autoGeocodeAddress() {
+  const rua = document.getElementById('rua').value.trim()
+  const numero = document.getElementById('numero').value.trim()
+  const bairro = document.getElementById('bairro').value.trim()
+  const cidade = document.getElementById('cidade').value.trim()
+
+  // Verificar se já tem coordenadas (selecionadas no mapa)
+  const latCliente = document.getElementById('lat_cliente').value
+  const lngCliente = document.getElementById('lng_cliente').value
+
+  if (latCliente && lngCliente) {
+    console.log(
+      '✅ [CLIENTE] Coordenadas já definidas pelo mapa, pulando geocodificação automática'
+    )
+    return
+  }
+
+  console.log('🔍 [CLIENTE] Iniciando geocodificação automática...')
+
+  // Mostrar indicador de loading
+  const geocodingStatus = document.getElementById('geocoding-status')
+  geocodingStatus.style.display = 'block'
+
+  try {
+    const location = await geocodeFromFields()
+
+    if (location) {
+      // Esconder loading
+      geocodingStatus.style.display = 'none'
+
+      // Mostrar indicador de sucesso
+      const locationIndicator = document.getElementById('location-indicator')
+      const locationIndicatorText = document.getElementById(
+        'location-indicator-text'
+      )
+
+      if (location.isApproximate) {
+        locationIndicator.style.background = '#fff3cd'
+        locationIndicator.querySelector('i').style.color = '#856404'
+        locationIndicatorText.style.color = '#856404'
+        locationIndicatorText.textContent =
+          'Localização aproximada obtida. Use o mapa para maior precisão.'
+      } else {
+        locationIndicator.style.background = '#e8f5e9'
+        locationIndicator.querySelector('i').style.color = '#4caf50'
+        locationIndicatorText.style.color = '#2e7d32'
+        locationIndicatorText.textContent =
+          'Localização verificada automaticamente ✓'
+      }
+
+      locationIndicator.style.display = 'block'
+
+      console.log('✅ [CLIENTE] Geocodificação automática concluída')
+    }
+  } catch (error) {
+    console.error('❌ [CLIENTE] Erro na geocodificação automática:', error)
+
+    // Esconder loading
+    geocodingStatus.style.display = 'none'
+
+    // Mostrar aviso
+    const locationIndicator = document.getElementById('location-indicator')
+    const locationIndicatorText = document.getElementById(
+      'location-indicator-text'
+    )
+
+    locationIndicator.style.background = '#fff3cd'
+    locationIndicator.querySelector('i').className =
+      'fas fa-exclamation-triangle'
+    locationIndicator.querySelector('i').style.color = '#856404'
+    locationIndicatorText.style.color = '#856404'
+    locationIndicatorText.textContent =
+      'Não foi possível verificar o endereço. Use o mapa para selecionar.'
+    locationIndicator.style.display = 'block'
+  }
+}
 
 // Carregar informações do usuário
 function loadUserInfo() {

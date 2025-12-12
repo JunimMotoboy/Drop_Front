@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/cliente.css">
     <link rel="stylesheet" href="../assets/css/map-fixed.css">
+    <link rel="stylesheet" href="../assets/css/form-validation.css">
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/css/leaflet.css" />
@@ -140,27 +141,39 @@
                                     </button>
                                     <span style="color: #666; font-size: 0.9em;">ou preencha os campos abaixo</span>
                                 </div>
+                                <div class="alert alert-info" style="margin-top: 10px; font-size: 0.9em;">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Dica:</strong> Use o botão "Selecionar no Mapa" para garantir a localização
+                                    exata, ou preencha os campos manualmente.
+                                </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group" style="flex: 3;">
                                     <label for="rua">Rua/Logradouro *</label>
-                                    <input type="text" id="rua" placeholder="Ex: Avenida Paulista">
+                                    <input type="text" id="rua" placeholder="Ex: Avenida Paulista" minlength="3"
+                                        maxlength="200" oninput="validateAddressField(this)">
+                                    <small class="field-hint">Mínimo 3 caracteres</small>
                                 </div>
                                 <div class="form-group" style="flex: 1;">
                                     <label for="numero">Número *</label>
-                                    <input type="text" id="numero" placeholder="123">
+                                    <input type="text" id="numero" placeholder="123 ou S/N" maxlength="10"
+                                        oninput="validateAddressField(this)">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="bairro">Bairro *</label>
-                                    <input type="text" id="bairro" placeholder="Ex: Bela Vista">
+                                    <input type="text" id="bairro" placeholder="Ex: Bela Vista" minlength="3"
+                                        maxlength="100" oninput="validateAddressField(this)">
+                                    <small class="field-hint">Mínimo 3 caracteres</small>
                                 </div>
                                 <div class="form-group">
                                     <label for="cidade">Cidade *</label>
-                                    <input type="text" id="cidade" placeholder="Ex: São Paulo">
+                                    <input type="text" id="cidade" placeholder="Ex: São Paulo" minlength="3"
+                                        maxlength="100" oninput="validateAddressField(this)">
+                                    <small class="field-hint">Mínimo 3 caracteres</small>
                                 </div>
                             </div>
 
@@ -169,11 +182,18 @@
                             <input type="hidden" id="lng_cliente" name="lng_cliente">
                             <input type="hidden" id="endereco_entrega" name="endereco_entrega">
 
-                            <!-- Indicador de localização selecionada -->
+                            <!-- Indicadores de localização -->
                             <div id="location-indicator"
                                 style="display: none; padding: 10px; background: #e8f5e9; border-radius: 5px; margin-top: 10px;">
                                 <i class="fas fa-check-circle" style="color: #4caf50;"></i>
-                                <span style="color: #2e7d32; margin-left: 5px;">Localização selecionada no mapa</span>
+                                <span style="color: #2e7d32; margin-left: 5px;" id="location-indicator-text">Localização
+                                    selecionada no mapa</span>
+                            </div>
+
+                            <div id="geocoding-status"
+                                style="display: none; padding: 10px; background: #fff3cd; border-radius: 5px; margin-top: 10px;">
+                                <i class="fas fa-spinner fa-spin" style="color: #856404;"></i>
+                                <span style="color: #856404; margin-left: 5px;">Verificando localização...</span>
                             </div>
                         </div>
 
