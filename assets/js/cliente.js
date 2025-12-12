@@ -380,6 +380,11 @@ async function verDetalhes(idEncomenda) {
 
 // Mostrar rastreamento
 function showTracking() {
+  console.log(
+    '🗺️ [CLIENTE] Iniciando rastreamento para encomenda:',
+    currentEncomenda.id_encomenda
+  )
+
   const trackingSection = document.getElementById('tracking-section')
   trackingSection.style.display = 'block'
 
@@ -393,19 +398,33 @@ function showTracking() {
 
     mapManager.getUserLocation((error, clientLocation) => {
       if (error) {
+        console.error(
+          '❌ [CLIENTE] Erro ao obter localização do cliente:',
+          error
+        )
         showToast('Erro ao obter sua localização', 'error')
         return
       }
 
+      console.log('📍 [CLIENTE] Localização do cliente:', clientLocation)
+
+      // Adicionar marcador do cliente
       mapManager.addMarker('cliente', clientLocation.lat, clientLocation.lng, {
         icon: 'user',
         popup: 'Você está aqui',
       })
 
+      // Verificar se tem localização do entregador
       if (
         currentEncomenda.latitude_entregador &&
         currentEncomenda.longitude_entregador
       ) {
+        console.log('📍 [CLIENTE] Localização do entregador:', {
+          lat: currentEncomenda.latitude_entregador,
+          lng: currentEncomenda.longitude_entregador,
+        })
+
+        // Adicionar marcador do entregador
         mapManager.addMarker(
           'entregador',
           currentEncomenda.latitude_entregador,
@@ -416,6 +435,7 @@ function showTracking() {
           }
         )
 
+        // Desenhar rota
         mapManager.drawRoute([
           [
             currentEncomenda.latitude_entregador,
@@ -424,6 +444,7 @@ function showTracking() {
           [clientLocation.lat, clientLocation.lng],
         ])
 
+        // Calcular distância e tempo
         const distance = mapManager.calculateDistance(
           currentEncomenda.latitude_entregador,
           currentEncomenda.longitude_entregador,
@@ -440,19 +461,41 @@ function showTracking() {
         ).textContent = `${timeMinutes} minutos`
 
         mapManager.fitAllMarkers()
+
+        console.log(
+          '✅ [CLIENTE] Mapa de rastreamento inicializado com sucesso'
+        )
+        showToast(
+          'Rastreamento ativo! Você verá atualizações em tempo real.',
+          'success'
+        )
       } else {
+        console.log('⚠️ [CLIENTE] Aguardando localização do entregador...')
         mapManager.centerMap(clientLocation.lat, clientLocation.lng, 15)
         document.getElementById('tracking-distance').textContent =
           'Aguardando localização do entregador'
         document.getElementById('tracking-time').textContent = 'Aguardando'
+        showToast('Aguardando o entregador ativar a localização...', 'info')
       }
     })
   }, 300)
 
+  // Remover listeners anteriores para evitar duplicação
+  socket.off('atualizacao_localizacao')
+
+  // Escutar atualizações de localização em tempo real
   socket.on('atualizacao_localizacao', (data) => {
+    console.log('📡 [CLIENTE] Atualização de localização recebida:', data)
+
     if (data.id_encomenda === currentEncomenda.id_encomenda) {
+      console.log(
+        '✅ [CLIENTE] Atualização é para esta encomenda, atualizando mapa...'
+      )
+
+      // Atualizar marcador do entregador
       mapManager.updateMarker('entregador', data.latitude, data.longitude, true)
 
+      // Recalcular distância e tempo
       mapManager.getUserLocation((error, clientLocation) => {
         if (!error) {
           const distance = mapManager.calculateDistance(
@@ -464,12 +507,20 @@ function showTracking() {
           document.getElementById(
             'tracking-distance'
           ).textContent = `${distance.toFixed(2)} km`
+
           const timeMinutes = Math.round((distance / 30) * 60)
           document.getElementById(
             'tracking-time'
           ).textContent = `${timeMinutes} minutos`
+
+          console.log('✅ [CLIENTE] Distância e tempo atualizados:', {
+            distance: `${distance.toFixed(2)} km`,
+            time: `${timeMinutes} min`,
+          })
         }
       })
+    } else {
+      console.log('ℹ️ [CLIENTE] Atualização é para outra encomenda, ignorando')
     }
   })
 }
