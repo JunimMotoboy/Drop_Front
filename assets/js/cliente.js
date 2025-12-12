@@ -1077,14 +1077,30 @@ function openLocationPickerModal() {
         (position) => {
           const lat = position.coords.latitude
           const lng = position.coords.longitude
+          
+          console.log('✅ [CLIENTE] Localização obtida:', { lat, lng })
+          
+          // Centralizar mapa na localização do usuário
           locationPickerMap.setView([lat, lng], 15)
-          console.log('✅ [CLIENTE] Mapa centralizado na localização atual:', { lat, lng })
+          
+          // Forçar atualização do mapa após obter permissão
+          setTimeout(() => {
+            locationPickerMap.invalidateSize()
+            console.log('🔄 [CLIENTE] Mapa atualizado após obter localização')
+          }, 100)
+          
+          console.log('✅ [CLIENTE] Mapa centralizado na localização atual')
         },
         (error) => {
           console.warn(
             '⚠️ [CLIENTE] Não foi possível obter localização atual:',
             error.message
           )
+          // Mesmo sem localização, forçar atualização do mapa
+          setTimeout(() => {
+            locationPickerMap.invalidateSize()
+            console.log('🔄 [CLIENTE] Mapa atualizado (sem localização)')
+          }, 100)
         },
         {
           enableHighAccuracy: false,
@@ -1092,6 +1108,12 @@ function openLocationPickerModal() {
           maximumAge: 60000
         }
       )
+    } else {
+      // Se geolocalização não disponível, forçar atualização do mapa
+      setTimeout(() => {
+        locationPickerMap.invalidateSize()
+        console.log('🔄 [CLIENTE] Mapa atualizado (geolocalização não disponível)')
+      }, 100)
     }
   }, 300)
 }
