@@ -128,10 +128,52 @@
                                     <label for="data_agendada">Data e Hora *</label>
                                     <input type="datetime-local" id="data_agendada" placeholder="Selecione data e hora">
                                 </div>
-                                <div class="form-group">
-                                    <label for="endereco_entrega">Endereço de Entrega *</label>
-                                    <input type="text" id="endereco_entrega" placeholder="Rua, número, bairro, cidade">
+                            </div>
+
+                            <!-- Campos de Endereço Separados -->
+                            <div class="form-group">
+                                <label>Endereço de Entrega *</label>
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                                    <button type="button" class="btn btn-secondary" onclick="openLocationPickerModal()"
+                                        style="white-space: nowrap;">
+                                        <i class="fas fa-map-marker-alt"></i> Selecionar no Mapa
+                                    </button>
+                                    <span style="color: #666; font-size: 0.9em;">ou preencha os campos abaixo</span>
                                 </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 3;">
+                                    <label for="rua">Rua/Logradouro *</label>
+                                    <input type="text" id="rua" placeholder="Ex: Avenida Paulista">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label for="numero">Número *</label>
+                                    <input type="text" id="numero" placeholder="123">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bairro">Bairro *</label>
+                                    <input type="text" id="bairro" placeholder="Ex: Bela Vista">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cidade">Cidade *</label>
+                                    <input type="text" id="cidade" placeholder="Ex: São Paulo">
+                                </div>
+                            </div>
+
+                            <!-- Campos ocultos para coordenadas -->
+                            <input type="hidden" id="lat_cliente" name="lat_cliente">
+                            <input type="hidden" id="lng_cliente" name="lng_cliente">
+                            <input type="hidden" id="endereco_entrega" name="endereco_entrega">
+
+                            <!-- Indicador de localização selecionada -->
+                            <div id="location-indicator"
+                                style="display: none; padding: 10px; background: #e8f5e9; border-radius: 5px; margin-top: 10px;">
+                                <i class="fas fa-check-circle" style="color: #4caf50;"></i>
+                                <span style="color: #2e7d32; margin-left: 5px;">Localização selecionada no mapa</span>
                             </div>
                         </div>
 
@@ -285,6 +327,36 @@
                 <!-- Chat -->
                 <div id="chat-section" style="display: none;">
                     <div id="chat-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Seleção de Localização -->
+    <div id="modal-location-picker" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fas fa-map-marker-alt"></i> Selecione sua Localização</h3>
+                <button class="btn-close" onclick="closeModal('modal-location-picker')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info" style="margin-bottom: 15px;">
+                    <i class="fas fa-info-circle"></i>
+                    Clique no mapa para selecionar o local exato da entrega
+                </div>
+                <div id="location-picker-map" style="height: 500px; width: 100%; border-radius: 8px;"></div>
+                <div style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                    <p style="margin: 0; font-weight: bold;">Endereço Selecionado:</p>
+                    <p id="selected-address" style="margin: 5px 0 0 0; color: #666;">Clique no mapa para selecionar</p>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn btn-outline" onclick="closeModal('modal-location-picker')">
+                        Cancelar
+                    </button>
+                    <button class="btn btn-primary" id="btn-confirm-location" onclick="confirmLocationSelection()"
+                        disabled>
+                        <i class="fas fa-check"></i> Confirmar Localização
+                    </button>
                 </div>
             </div>
         </div>

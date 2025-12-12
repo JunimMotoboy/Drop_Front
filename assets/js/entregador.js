@@ -336,7 +336,7 @@ async function openMapModal() {
   const mapSection = document.getElementById('map-section')
   mapSection.style.display = 'block'
 
-  console.log('🗺️ Abrindo mapa para entrega:', currentEntrega)
+  console.log('🗺️ [ENTREGADOR] Abrindo mapa para entrega:', currentEntrega)
 
   // Aguardar o DOM atualizar antes de inicializar/redimensionar o mapa
   setTimeout(async () => {
@@ -350,12 +350,12 @@ async function openMapModal() {
 
     mapManager.getUserLocation(async (error, myLocation) => {
       if (error) {
-        console.error('❌ Erro ao obter localização:', error)
+        console.error('❌ [ENTREGADOR] Erro ao obter localização:', error)
         showToast('Erro ao obter localização', 'error')
         return
       }
 
-      console.log('📍 Localização do entregador:', myLocation)
+      console.log('📍 [ENTREGADOR] Localização do entregador:', myLocation)
 
       // Limpar marcadores anteriores
       mapManager.clearMarkers()
@@ -366,45 +366,27 @@ async function openMapModal() {
         icon: 'delivery',
         popup: 'Você está aqui',
       })
-      console.log('✅ Marcador do entregador adicionado')
+      console.log('✅ [ENTREGADOR] Marcador do entregador adicionado')
 
-      // Adicionar destino se disponível
-      console.log('🔍 Objeto completo da entrega:', currentEntrega)
-      console.log(
-        '🔍 Verificando tipo de entrega:',
-        currentEntrega.tipo_entrega
-      )
-      console.log('🔍 Endereço:', currentEntrega.endereco_entrega)
+      // ===== USAR COORDENADAS SALVAS DO CLIENTE =====
+      console.log('🔍 [ENTREGADOR] Verificando coordenadas salvas...')
+      console.log('🔍 [ENTREGADOR] lat_cliente:', currentEntrega.lat_cliente)
+      console.log('🔍 [ENTREGADOR] lng_cliente:', currentEntrega.lng_cliente)
 
-      // ✅ CORREÇÃO: Verificar se é entrega agendada E tem endereço
-      // Para entregas móveis, não deve tentar geocodificar
-      if (
-        currentEntrega.tipo_entrega === 'agendada' &&
-        currentEntrega.endereco_entrega &&
-        currentEntrega.endereco_entrega.trim() !== ''
-      ) {
+      // Verificar se tem coordenadas salvas
+      if (currentEntrega.lat_cliente && currentEntrega.lng_cliente) {
+        console.log('✅ [ENTREGADOR] Usando coordenadas salvas do cliente!')
+
         try {
-          // Geocodificar o endereço do cliente
-          console.log(
-            '🔍 Geocodificando endereço:',
-            currentEntrega.endereco_entrega
-          )
-          showToast('Localizando endereço do cliente...', 'info')
+          const clientLocation = {
+            lat: parseFloat(currentEntrega.lat_cliente),
+            lng: parseFloat(currentEntrega.lng_cliente),
+          }
 
-          const clientLocation = await geocodeAddress(
-            currentEntrega.endereco_entrega
-          )
-
-          console.log('✅ Endereço geocodificado:', clientLocation)
+          console.log('📍 [ENTREGADOR] Coordenadas do cliente:', clientLocation)
 
           // Adicionar marcador do cliente
-          console.log(
-            '📍 Adicionando marcador do cliente em:',
-            clientLocation.lat,
-            clientLocation.lng
-          )
-
-          const clientMarker = mapManager.addMarker(
+          mapManager.addMarker(
             'cliente',
             clientLocation.lat,
             clientLocation.lng,
@@ -413,11 +395,10 @@ async function openMapModal() {
               popup: `Cliente: ${currentEntrega.nome_cliente}`,
             }
           )
-
-          console.log('✅ Marcador do cliente adicionado:', clientMarker)
+          console.log('✅ [ENTREGADOR] Marcador do cliente adicionado')
 
           // Calcular e desenhar rota
-          console.log('🛣️ Calculando rota...')
+          console.log('🛣️ [ENTREGADOR] Calculando rota...')
           const route = await calculateRoute(
             myLocation.lat,
             myLocation.lng,
@@ -425,11 +406,11 @@ async function openMapModal() {
             clientLocation.lng
           )
 
-          console.log('✅ Rota calculada:', route)
+          console.log('✅ [ENTREGADOR] Rota calculada:', route)
 
           // Desenhar rota no mapa
           mapManager.drawRoute(route.coordinates, '#2563eb')
-          console.log('✅ Rota desenhada no mapa')
+          console.log('✅ [ENTREGADOR] Rota desenhada no mapa')
 
           // Atualizar informações de distância e tempo
           document.getElementById('map-distance').textContent = formatDistance(
@@ -439,15 +420,90 @@ async function openMapModal() {
             route.duration
           )
 
-          console.log('✅ Informações de distância e tempo atualizadas')
+          console.log(
+            '✅ [ENTREGADOR] Informações de distância e tempo atualizadas'
+          )
 
           // Ajustar zoom para mostrar ambos os marcadores
           mapManager.fitAllMarkers()
-          console.log('✅ Zoom ajustado para mostrar todos os marcadores')
+          console.log(
+            '✅ [ENTREGADOR] Zoom ajustado para mostrar todos os marcadores'
+          )
 
           showToast('Rota calculada com sucesso!', 'success')
         } catch (error) {
-          console.error('❌ Erro ao processar endereço:', error)
+          console.error('❌ [ENTREGADOR] Erro ao processar coordenadas:', error)
+          showToast('Erro ao calcular rota', 'error')
+          mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
+        }
+      }
+      // ===== FALLBACK: GEOCODIFICAR ENDEREÇO =====
+      else if (
+        currentEntrega.tipo_entrega === 'agendada' &&
+        currentEntrega.endereco_entrega &&
+        currentEntrega.endereco_entrega.trim() !== ''
+      ) {
+        console.log(
+          '⚠️ [ENTREGADOR] Coordenadas não disponíveis, usando fallback de geocodificação'
+        )
+
+        try {
+          // Geocodificar o endereço do cliente como fallback
+          console.log(
+            '🔍 [ENTREGADOR] Geocodificando endereço:',
+            currentEntrega.endereco_entrega
+          )
+          showToast('Localizando endereço do cliente...', 'info')
+
+          const clientLocation = await geocodeAddress(
+            currentEntrega.endereco_entrega
+          )
+
+          console.log('✅ [ENTREGADOR] Endereço geocodificado:', clientLocation)
+
+          // Adicionar marcador do cliente
+          mapManager.addMarker(
+            'cliente',
+            clientLocation.lat,
+            clientLocation.lng,
+            {
+              icon: 'destination',
+              popup: `Cliente: ${currentEntrega.nome_cliente}`,
+            }
+          )
+
+          console.log(
+            '✅ [ENTREGADOR] Marcador do cliente adicionado (fallback)'
+          )
+
+          // Calcular e desenhar rota
+          const route = await calculateRoute(
+            myLocation.lat,
+            myLocation.lng,
+            clientLocation.lat,
+            clientLocation.lng
+          )
+
+          // Desenhar rota no mapa
+          mapManager.drawRoute(route.coordinates, '#2563eb')
+
+          // Atualizar informações de distância e tempo
+          document.getElementById('map-distance').textContent = formatDistance(
+            route.distance
+          )
+          document.getElementById('map-time').textContent = formatDuration(
+            route.duration
+          )
+
+          // Ajustar zoom para mostrar ambos os marcadores
+          mapManager.fitAllMarkers()
+
+          showToast(
+            'Rota calculada com sucesso! (usando geocodificação)',
+            'success'
+          )
+        } catch (error) {
+          console.error('❌ [ENTREGADOR] Erro ao processar endereço:', error)
           showToast(
             'Não foi possível localizar o endereço do cliente',
             'warning'
@@ -455,16 +511,18 @@ async function openMapModal() {
           // Centralizar apenas no entregador
           mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
         }
-      } else {
+      }
+      // ===== SEM LOCALIZAÇÃO DISPONÍVEL =====
+      else {
         console.log(
-          'ℹ️ Entrega móvel ou sem endereço - apenas marcador do entregador'
+          'ℹ️ [ENTREGADOR] Entrega móvel ou sem localização - apenas marcador do entregador'
         )
-        // ✅ Para entregas móveis, apenas centralizar no entregador
+        // Para entregas móveis ou sem localização, apenas centralizar no entregador
         mapManager.centerMap(myLocation.lat, myLocation.lng, 15)
         document.getElementById('map-distance').textContent =
           currentEntrega.tipo_entrega === 'movel'
             ? 'Entrega no local atual do cliente'
-            : '-'
+            : 'Localização não disponível'
         document.getElementById('map-time').textContent =
           currentEntrega.tipo_entrega === 'movel'
             ? 'Aguardando localização do cliente'

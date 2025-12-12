@@ -11,6 +11,8 @@ let currentEncomenda = null
 let mapManager = null
 let chatManager = null
 let locationWatchId = null
+let locationPickerMap = null
+let selectedLocation = null
 
 // Inicializar ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,7 +42,6 @@ async function loadEncomendas() {
   const originalText = loadingText ? loadingText.textContent : ''
 
   try {
-    // Atualizar texto de loading para informar sobre possível inicialização
     if (loadingText) {
       loadingText.textContent = 'Conectando ao servidor...'
     }
@@ -48,9 +49,7 @@ async function loadEncomendas() {
 
     const result = await fetchApi(
       `${API_URL}/encomendas/minhas`,
-      {
-        method: 'GET',
-      },
+      { method: 'GET' },
       'encomendas'
     )
 
@@ -74,7 +73,6 @@ async function loadEncomendas() {
     encomendas = []
     renderEncomendas()
   } finally {
-    // Restaurar texto original
     if (loadingText && originalText) {
       loadingText.textContent = originalText
     }
@@ -87,15 +85,15 @@ function renderEncomendas() {
 
   if (encomendas.length === 0) {
     container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-box-open"></i>
-                <h3>Nenhuma encomenda encontrada</h3>
-                <p>Crie sua primeira encomenda para começar!</p>
-                <button class="btn btn-primary" onclick="showSection('nova-encomenda')">
-                    <i class="fas fa-plus"></i> Nova Encomenda
-                </button>
-            </div>
-        `
+      <div class="empty-state">
+        <i class="fas fa-box-open"></i>
+        <h3>Nenhuma encomenda encontrada</h3>
+        <p>Crie sua primeira encomenda para começar!</p>
+        <button class="btn btn-primary" onclick="showSection('nova-encomenda')">
+          <i class="fas fa-plus"></i> Nova Encomenda
+        </button>
+      </div>
+    `
     return
   }
 
@@ -106,54 +104,48 @@ function renderEncomendas() {
         encomenda.tipo_entrega === 'agendada' ? 'Agendada' : 'Móvel'
 
       return `
-            <div class="encomenda-card status-${
-              encomenda.status
-            }" onclick="verDetalhes(${encomenda.id_encomenda})">
-                <div class="encomenda-header">
-                    <div class="encomenda-codigo">#${
-                      encomenda.codigo_rastreio || encomenda.id_encomenda
-                    }</div>
-                    <span class="encomenda-status ${status.class}">${
-        status.text
-      }</span>
-                </div>
-                <div class="encomenda-info">
-                    <div class="info-row">
-                        <i class="fas fa-store"></i>
-                        <span>${encomenda.loja_origem}</span>
-                    </div>
-                    <div class="info-row">
-                        <i class="fas fa-dollar-sign"></i>
-                        <span>R$ ${parseFloat(encomenda.valor).toFixed(
-                          2
-                        )}</span>
-                    </div>
-                    <div class="info-row">
-                        <i class="fas fa-truck"></i>
-                        <span>${tipoEntrega}</span>
-                    </div>
-                    ${
-                      encomenda.nome_entregador
-                        ? `
-                        <div class="info-row">
-                            <i class="fas fa-user"></i>
-                            <span>${encomenda.nome_entregador}</span>
-                        </div>
-                    `
-                        : ''
-                    }
-                </div>
-                <div class="encomenda-footer">
-                    <span class="encomenda-date">
-                        <i class="fas fa-calendar"></i>
-                        ${formatDate(encomenda.criado_em)}
-                    </span>
-                    <button class="btn btn-primary btn-sm btn-ver-detalhes">
-                        Ver Detalhes
-                    </button>
-                </div>
+      <div class="encomenda-card status-${
+        encomenda.status
+      }" onclick="verDetalhes(${encomenda.id_encomenda})">
+        <div class="encomenda-header">
+          <div class="encomenda-codigo">#${
+            encomenda.codigo_rastreio || encomenda.id_encomenda
+          }</div>
+          <span class="encomenda-status ${status.class}">${status.text}</span>
+        </div>
+        <div class="encomenda-info">
+          <div class="info-row">
+            <i class="fas fa-store"></i>
+            <span>${encomenda.loja_origem}</span>
+          </div>
+          <div class="info-row">
+            <i class="fas fa-dollar-sign"></i>
+            <span>R$ ${parseFloat(encomenda.valor).toFixed(2)}</span>
+          </div>
+          <div class="info-row">
+            <i class="fas fa-truck"></i>
+            <span>${tipoEntrega}</span>
+          </div>
+          ${
+            encomenda.nome_entregador
+              ? `
+            <div class="info-row">
+              <i class="fas fa-user"></i>
+              <span>${encomenda.nome_entregador}</span>
             </div>
-        `
+          `
+              : ''
+          }
+        </div>
+        <div class="encomenda-footer">
+          <span class="encomenda-date">
+            <i class="fas fa-calendar"></i>
+            ${formatDate(encomenda.criado_em)}
+          </span>
+          <button class="btn btn-primary btn-sm btn-ver-detalhes">Ver Detalhes</button>
+        </div>
+      </div>
+    `
     })
     .join('')
 }
@@ -172,7 +164,6 @@ function filterEncomendas() {
       (encomenda.codigo_rastreio &&
         encomenda.codigo_rastreio.toLowerCase().includes(searchTerm)) ||
       encomenda.loja_origem.toLowerCase().includes(searchTerm)
-
     return matchStatus && matchSearch
   })
 
@@ -180,16 +171,15 @@ function filterEncomendas() {
 
   if (filtered.length === 0) {
     container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-search"></i>
-                <h3>Nenhuma encomenda encontrada</h3>
-                <p>Tente ajustar os filtros de busca</p>
-            </div>
-        `
+      <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>Nenhuma encomenda encontrada</h3>
+        <p>Tente ajustar os filtros de busca</p>
+      </div>
+    `
     return
   }
 
-  // Renderizar apenas as filtradas
   const tempEncomendas = encomendas
   encomendas = filtered
   renderEncomendas()
@@ -205,7 +195,6 @@ async function verDetalhes(idEncomenda) {
     return
   }
 
-  // Preencher informações
   document.getElementById('det-codigo').textContent =
     currentEncomenda.codigo_rastreio || `#${currentEncomenda.id_encomenda}`
   document.getElementById('det-loja').textContent = currentEncomenda.loja_origem
@@ -226,7 +215,6 @@ async function verDetalhes(idEncomenda) {
     currentEncomenda.criado_em
   )
 
-  // Observações
   if (currentEncomenda.observacoes) {
     document.getElementById('det-obs').textContent =
       currentEncomenda.observacoes
@@ -235,29 +223,21 @@ async function verDetalhes(idEncomenda) {
     document.getElementById('det-obs-container').style.display = 'none'
   }
 
-  // Controlar visibilidade dos botões
   const btnRastrear = document.getElementById('btn-rastrear')
   const btnChat = document.getElementById('btn-chat')
   const btnCancelar = document.getElementById('btn-cancelar')
 
-  // Rastrear: apenas se tiver entregador e status em_rota
   btnRastrear.style.display =
     currentEncomenda.id_entregador && currentEncomenda.status === 'em_rota'
       ? 'block'
       : 'none'
-
-  // Chat: apenas se tiver entregador
   btnChat.style.display = currentEncomenda.id_entregador ? 'block' : 'none'
-
-  // Cancelar: apenas se status for aguardando
   btnCancelar.style.display =
     currentEncomenda.status === 'aguardando' ? 'block' : 'none'
 
-  // Esconder seções de rastreamento e chat
   document.getElementById('tracking-section').style.display = 'none'
   document.getElementById('chat-section').style.display = 'none'
 
-  // Abrir modal
   openModal('modal-detalhes')
 }
 
@@ -266,31 +246,25 @@ function showTracking() {
   const trackingSection = document.getElementById('tracking-section')
   trackingSection.style.display = 'block'
 
-  // Aguardar o container ficar visível antes de inicializar o mapa
   setTimeout(() => {
-    // Inicializar mapa se ainda não foi
     if (!mapManager) {
       mapManager = new MapManager('map')
       mapManager.init()
     } else {
-      // Se já existe, apenas redimensionar
       mapManager.resize()
     }
 
-    // Obter localização do cliente
     mapManager.getUserLocation((error, clientLocation) => {
       if (error) {
         showToast('Erro ao obter sua localização', 'error')
         return
       }
 
-      // Adicionar marcador do cliente
       mapManager.addMarker('cliente', clientLocation.lat, clientLocation.lng, {
         icon: 'user',
         popup: 'Você está aqui',
       })
 
-      // Se tiver localização do entregador, adicionar
       if (
         currentEncomenda.latitude_entregador &&
         currentEncomenda.longitude_entregador
@@ -305,7 +279,6 @@ function showTracking() {
           }
         )
 
-        // Desenhar rota
         mapManager.drawRoute([
           [
             currentEncomenda.latitude_entregador,
@@ -314,42 +287,35 @@ function showTracking() {
           [clientLocation.lat, clientLocation.lng],
         ])
 
-        // Calcular distância
         const distance = mapManager.calculateDistance(
           currentEncomenda.latitude_entregador,
           currentEncomenda.longitude_entregador,
           clientLocation.lat,
           clientLocation.lng
         )
-
         document.getElementById(
           'tracking-distance'
         ).textContent = `${distance.toFixed(2)} km`
 
-        // Estimar tempo (assumindo 30 km/h)
         const timeMinutes = Math.round((distance / 30) * 60)
         document.getElementById(
           'tracking-time'
         ).textContent = `${timeMinutes} minutos`
 
-        // Ajustar zoom para mostrar ambos
         mapManager.fitAllMarkers()
       } else {
-        // Apenas centralizar no cliente
         mapManager.centerMap(clientLocation.lat, clientLocation.lng, 15)
         document.getElementById('tracking-distance').textContent =
           'Aguardando localização do entregador'
         document.getElementById('tracking-time').textContent = 'Aguardando'
       }
     })
-  }, 300) // Delay de 300ms para garantir que o container está visível
+  }, 300)
 
-  // Escutar atualizações de localização via Socket.IO
   socket.on('atualizacao_localizacao', (data) => {
     if (data.id_encomenda === currentEncomenda.id_encomenda) {
       mapManager.updateMarker('entregador', data.latitude, data.longitude, true)
 
-      // Recalcular distância
       mapManager.getUserLocation((error, clientLocation) => {
         if (!error) {
           const distance = mapManager.calculateDistance(
@@ -358,7 +324,6 @@ function showTracking() {
             clientLocation.lat,
             clientLocation.lng
           )
-
           document.getElementById(
             'tracking-distance'
           ).textContent = `${distance.toFixed(2)} km`
@@ -375,10 +340,6 @@ function showTracking() {
 // Abrir chat
 function openChatModal() {
   console.log('🔵 [CLIENTE] Abrindo chat modal')
-  console.log('🔵 [CLIENTE] Encomenda atual:', currentEncomenda)
-  console.log('🔵 [CLIENTE] Socket existe?', !!socket)
-  console.log('🔵 [CLIENTE] ChatManager existe?', !!chatManager)
-
   const chatSection = document.getElementById('chat-section')
   if (!chatSection) {
     console.error('❌ [CLIENTE] Seção de chat não encontrada!')
@@ -388,38 +349,24 @@ function openChatModal() {
 
   chatSection.style.display = 'block'
 
-  // Verificar se socket está conectado
   if (!socket || !socket.connected) {
     console.warn('⚠️ [CLIENTE] Socket não conectado, reconectando...')
     socket = connectSocket()
-
-    // Aguardar conexão
-    setTimeout(() => {
-      initializeChatManager()
-    }, 1000)
+    setTimeout(() => initializeChatManager(), 1000)
   } else {
     initializeChatManager()
   }
 }
 
-// Função auxiliar para inicializar o chat manager
 function initializeChatManager() {
-  // Destruir chat anterior se existir
   if (chatManager) {
     console.log('🔄 [CLIENTE] Destruindo chat anterior')
     chatManager.destroy()
     chatManager = null
   }
 
-  // Criar nova instância
   console.log('🆕 [CLIENTE] Criando nova instância do ChatManager')
   chatManager = new ChatManager('chat-container', socket)
-
-  // Abrir chat para esta encomenda
-  console.log(
-    '📂 [CLIENTE] Abrindo chat para encomenda:',
-    currentEncomenda.id_encomenda
-  )
   chatManager.openChat(
     currentEncomenda.id_encomenda,
     currentEncomenda.nome_entregador || 'Entregador'
@@ -428,9 +375,7 @@ function initializeChatManager() {
 
 // Cancelar encomenda
 async function cancelarEncomenda() {
-  if (!confirm('Tem certeza que deseja cancelar esta encomenda?')) {
-    return
-  }
+  if (!confirm('Tem certeza que deseja cancelar esta encomenda?')) return
 
   try {
     const response = await fetchWithAuth(
@@ -454,7 +399,6 @@ async function cancelarEncomenda() {
 
 // Configurar listeners dos formulários
 function setupFormListeners() {
-  // Formulário de nova encomenda
   const formNovaEncomenda = document.getElementById('form-nova-encomenda')
   if (formNovaEncomenda) {
     formNovaEncomenda.addEventListener('submit', async (e) => {
@@ -475,31 +419,23 @@ function toggleEntregaFields() {
   if (tipoEntrega === 'agendada') {
     agendadaFields.style.display = 'block'
     movelFields.style.display = 'none'
-
-    // Aplicar required e definir data mínima
     dataAgendada.required = true
     enderecoEntrega.required = true
 
-    // Definir data mínima como agora
     const now = new Date()
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset()) // Ajustar para timezone local
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
     dataAgendada.min = now.toISOString().slice(0, 16)
 
     console.log('✅ [CLIENTE] Campos de entrega agendada ativados')
   } else if (tipoEntrega === 'movel') {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'block'
-
-    // Remover required
     dataAgendada.required = false
     enderecoEntrega.required = false
-
     console.log('✅ [CLIENTE] Campos de entrega móvel ativados')
   } else {
     agendadaFields.style.display = 'none'
     movelFields.style.display = 'none'
-
-    // Remover required
     dataAgendada.required = false
     enderecoEntrega.required = false
   }
@@ -509,17 +445,14 @@ function toggleEntregaFields() {
 async function criarEncomenda() {
   const tipoEntrega = document.getElementById('tipo_entrega').value
 
-  // 🔍 DEBUG: Verificar valor capturado
   console.log('🔍 [CLIENTE] Tipo de entrega selecionado:', tipoEntrega)
 
-  // ✅ VALIDAÇÃO: Verificar se o tipo foi selecionado
   if (!tipoEntrega || tipoEntrega === '') {
     showToast('Por favor, selecione o tipo de entrega', 'error')
     console.error('❌ [CLIENTE] Tipo de entrega não selecionado')
     return
   }
 
-  // Validar campos básicos
   const lojaOrigem = document.getElementById('loja_origem').value.trim()
   const valor = document.getElementById('valor').value
 
@@ -542,23 +475,13 @@ async function criarEncomenda() {
     observacoes: document.getElementById('observacoes').value.trim() || null,
   }
 
-  // Validação específica para entrega agendada
+  // ===== TRATAMENTO PARA ENTREGA AGENDADA =====
   if (tipoEntrega === 'agendada') {
     const dataAgendada = document.getElementById('data_agendada').value
-    const enderecoEntrega = document
-      .getElementById('endereco_entrega')
-      .value.trim()
 
-    // Validar campos obrigatórios
     if (!dataAgendada) {
       showToast('Por favor, informe a data e hora da entrega', 'error')
       console.error('❌ [CLIENTE] Data agendada não informada')
-      return
-    }
-
-    if (!enderecoEntrega) {
-      showToast('Por favor, informe o endereço de entrega', 'error')
-      console.error('❌ [CLIENTE] Endereço de entrega não informado')
       return
     }
 
@@ -572,21 +495,94 @@ async function criarEncomenda() {
       return
     }
 
-    // Formatar data para ISO 8601 completo com timezone
-    const dataFormatada = new Date(dataAgendada).toISOString()
+    // Coletar dados dos campos separados
+    const rua = document.getElementById('rua').value.trim()
+    const numero = document.getElementById('numero').value.trim()
+    const bairro = document.getElementById('bairro').value.trim()
+    const cidade = document.getElementById('cidade').value.trim()
 
-    encomendaData.data_agendada = dataFormatada
-    encomendaData.endereco_entrega = enderecoEntrega
+    // Verificar se campos foram preenchidos
+    if (!rua || !numero || !bairro || !cidade) {
+      showToast('Por favor, preencha todos os campos de endereço', 'error')
+      console.error('❌ [CLIENTE] Campos de endereço incompletos')
+      return
+    }
 
-    // 🔍 DEBUG: Verificar dados de entrega agendada
+    // Verificar se já tem coordenadas (selecionadas no mapa)
+    let lat = document.getElementById('lat_cliente').value
+    let lng = document.getElementById('lng_cliente').value
+
+    // Se não tem coordenadas, geocodificar o endereço
+    if (!lat || !lng) {
+      console.log(
+        '🔍 [CLIENTE] Coordenadas não encontradas, geocodificando endereço...'
+      )
+      const location = await geocodeFromFields()
+
+      if (location) {
+        lat = location.lat
+        lng = location.lng
+      } else {
+        showToast(
+          'Não foi possível obter as coordenadas do endereço. Tente selecionar no mapa.',
+          'warning'
+        )
+        // Continuar mesmo sem coordenadas (backend pode lidar com isso)
+      }
+    }
+
+    // Montar endereço completo
+    const enderecoCompleto = `${rua}, ${numero}, ${bairro}, ${cidade}`
+
+    // Adicionar dados de entrega agendada
+    encomendaData.data_agendada = new Date(dataAgendada).toISOString()
+    encomendaData.endereco_entrega = enderecoCompleto
+    encomendaData.rua = rua
+    encomendaData.numero = numero
+    encomendaData.bairro = bairro
+    encomendaData.cidade = cidade
+
+    if (lat && lng) {
+      encomendaData.lat_cliente = parseFloat(lat)
+      encomendaData.lng_cliente = parseFloat(lng)
+    }
+
     console.log('📅 [CLIENTE] Dados de entrega agendada:', {
-      dataOriginal: dataAgendada,
-      dataFormatada: dataFormatada,
-      endereco: enderecoEntrega,
+      endereco: enderecoCompleto,
+      coordenadas: lat && lng ? { lat, lng } : 'Não disponível',
     })
   }
 
-  // 🔍 DEBUG: Mostrar objeto completo antes de enviar
+  // ===== TRATAMENTO PARA ENTREGA MÓVEL =====
+  else if (tipoEntrega === 'movel') {
+    console.log(
+      '📍 [CLIENTE] Capturando localização atual para entrega móvel...'
+    )
+
+    try {
+      const locationData = await captureCurrentLocation()
+
+      // Adicionar dados de localização
+      encomendaData.lat_cliente = locationData.lat
+      encomendaData.lng_cliente = locationData.lng
+      encomendaData.rua = locationData.rua
+      encomendaData.numero = locationData.numero
+      encomendaData.bairro = locationData.bairro
+      encomendaData.cidade = locationData.cidade
+      encomendaData.endereco_entrega = locationData.address
+
+      console.log('✅ [CLIENTE] Localização capturada:', locationData)
+      showToast('Localização capturada com sucesso!', 'success')
+    } catch (error) {
+      console.error('❌ [CLIENTE] Erro ao capturar localização:', error)
+      showToast(
+        'Não foi possível capturar sua localização. Por favor, permita o acesso.',
+        'error'
+      )
+      return
+    }
+  }
+
   console.log(
     '📦 [CLIENTE] Dados completos da encomenda a serem enviados:',
     JSON.stringify(encomendaData, null, 2)
@@ -598,7 +594,6 @@ async function criarEncomenda() {
       body: JSON.stringify(encomendaData),
     })
 
-    // 🔍 DEBUG: Verificar resposta da API
     console.log('📡 [CLIENTE] Status da resposta:', response.status)
 
     if (response.ok) {
@@ -611,24 +606,23 @@ async function criarEncomenda() {
         }`,
         'success'
       )
+
+      // Limpar formulário e campos ocultos
       document.getElementById('form-nova-encomenda').reset()
+      document.getElementById('lat_cliente').value = ''
+      document.getElementById('lng_cliente').value = ''
+      document.getElementById('location-indicator').style.display = 'none'
+
       toggleEntregaFields()
       showSection('encomendas')
       loadEncomendas()
     } else {
       const data = await response.json()
       console.error('❌ [CLIENTE] Erro na resposta:', data)
-      console.error('❌ [CLIENTE] Detalhes do erro:', {
-        status: response.status,
-        statusText: response.statusText,
-        message: data.message,
-        error: data.error,
-      })
       showToast(data.message || 'Erro ao criar encomenda', 'error')
     }
   } catch (error) {
     console.error('❌ [CLIENTE] Erro ao criar encomenda:', error)
-    console.error('❌ [CLIENTE] Stack trace:', error.stack)
     showToast('Erro ao conectar com o servidor', 'error')
   }
 }
@@ -648,55 +642,39 @@ function updateStats() {
 
 // Mostrar seção
 function showSection(sectionName) {
-  // Esconder todas as seções
-  document.querySelectorAll('.dashboard-section').forEach((section) => {
-    section.classList.remove('active')
-  })
+  document
+    .querySelectorAll('.dashboard-section')
+    .forEach((section) => section.classList.remove('active'))
+  document
+    .querySelectorAll('.nav-link')
+    .forEach((link) => link.classList.remove('active'))
 
-  // Remover active dos links
-  document.querySelectorAll('.nav-link').forEach((link) => {
-    link.classList.remove('active')
-  })
-
-  // Mostrar seção selecionada
   const section = document.getElementById(`section-${sectionName}`)
-  if (section) {
-    section.classList.add('active')
-  }
+  if (section) section.classList.add('active')
 
-  // Adicionar active ao link correspondente
   const activeLink = document.querySelector(
     `.nav-link[onclick*="${sectionName}"]`
   )
-  if (activeLink) {
-    activeLink.classList.add('active')
-  }
+  if (activeLink) activeLink.classList.add('active')
 }
 
 // Abrir modal
 function openModal(modalId) {
   const modal = document.getElementById(modalId)
-  if (modal) {
-    modal.classList.add('active')
-  }
+  if (modal) modal.classList.add('active')
 }
 
 // Fechar modal
 function closeModal(modalId) {
   const modal = document.getElementById(modalId)
-  if (modal) {
-    modal.classList.remove('active')
-  }
+  if (modal) modal.classList.remove('active')
 
-  // Limpar mapa e chat se existirem
   if (mapManager) {
     mapManager.clearMarkers()
     mapManager.clearRoute()
   }
 
-  if (chatManager) {
-    chatManager.closeChat()
-  }
+  if (chatManager) chatManager.closeChat()
 }
 
 // Fechar modal ao clicar fora
@@ -708,24 +686,18 @@ window.addEventListener('click', (e) => {
 
 // Inicializar Socket.IO
 function initializeSocket() {
-  // Conectar ao socket
-  if (!socket) {
-    socket = connectSocket()
-  }
+  if (!socket) socket = connectSocket()
 
   if (!socket) {
     console.error('Falha ao conectar Socket.IO')
     return
   }
 
-  // Escutar criação de encomenda (para o próprio cliente)
   socket.on('encomenda_criada', (data) => {
     console.log('Nova encomenda criada:', data)
-    // Recarregar lista de encomendas
     loadEncomendas()
   })
 
-  // Escutar atualizações de status
   socket.on('status_atualizado', (data) => {
     console.log('Status atualizado:', data)
     const encomenda = encomendas.find(
@@ -737,12 +709,10 @@ function initializeSocket() {
       updateStats()
       showToast(`Status atualizado: ${formatStatus(data.status).text}`, 'info')
     } else {
-      // Se não encontrou, recarregar lista
       loadEncomendas()
     }
   })
 
-  // Escutar atribuição de entregador
   socket.on('entregador_atribuido', (data) => {
     console.log('Entregador atribuído:', data)
     const encomenda = encomendas.find(
@@ -754,8 +724,273 @@ function initializeSocket() {
       renderEncomendas()
       showToast(`Entregador atribuído: ${data.nome_entregador}`, 'success')
     } else {
-      // Se não encontrou, recarregar lista
       loadEncomendas()
     }
+  })
+}
+
+// ===== FUNÇÕES DE LOCALIZAÇÃO =====
+
+// Abrir modal de seleção de localização
+function openLocationPickerModal() {
+  console.log('🗺️ [CLIENTE] Abrindo modal de seleção de localização')
+
+  const modal = document.getElementById('modal-location-picker')
+  if (!modal) {
+    console.error('❌ [CLIENTE] Modal de localização não encontrado!')
+    showToast('Erro ao abrir seletor de localização', 'error')
+    return
+  }
+
+  // Resetar seleção anterior
+  selectedLocation = null
+  document.getElementById('selected-address').textContent =
+    'Clique no mapa para selecionar'
+  document.getElementById('btn-confirm-location').disabled = true
+
+  // Abrir modal
+  modal.classList.add('active')
+
+  // Aguardar modal ficar visível antes de inicializar mapa
+  setTimeout(() => {
+    if (!locationPickerMap) {
+      // Criar novo mapa para seleção
+      locationPickerMap = L.map('location-picker-map').setView(
+        [-23.5505, -46.6333],
+        13
+      )
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+      }).addTo(locationPickerMap)
+
+      // Adicionar evento de clique no mapa
+      locationPickerMap.on('click', async (e) => {
+        const lat = e.latlng.lat
+        const lng = e.latlng.lng
+
+        console.log('📍 [CLIENTE] Localização selecionada:', { lat, lng })
+
+        // Salvar localização selecionada
+        selectedLocation = { lat, lng }
+
+        // Limpar marcadores anteriores
+        locationPickerMap.eachLayer((layer) => {
+          if (layer instanceof L.Marker) {
+            locationPickerMap.removeLayer(layer)
+          }
+        })
+
+        // Adicionar marcador na posição clicada
+        L.marker([lat, lng])
+          .addTo(locationPickerMap)
+          .bindPopup('Localização selecionada')
+          .openPopup()
+
+        // Fazer geocodificação reversa para obter endereço
+        try {
+          showToast('Obtendo endereço...', 'info')
+          const address = await reverseGeocode(lat, lng)
+          document.getElementById('selected-address').textContent = address
+          selectedLocation.address = address
+
+          // Habilitar botão de confirmar
+          document.getElementById('btn-confirm-location').disabled = false
+
+          console.log('✅ [CLIENTE] Endereço obtido:', address)
+        } catch (error) {
+          console.error('❌ [CLIENTE] Erro ao obter endereço:', error)
+          document.getElementById(
+            'selected-address'
+          ).textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
+          document.getElementById('btn-confirm-location').disabled = false
+        }
+      })
+    } else {
+      // Se mapa já existe, apenas redimensionar
+      locationPickerMap.invalidateSize()
+    }
+
+    // Tentar centralizar no local atual do usuário
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          locationPickerMap.setView([lat, lng], 15)
+          console.log('✅ [CLIENTE] Mapa centralizado na localização atual')
+        },
+        (error) => {
+          console.warn(
+            '⚠️ [CLIENTE] Não foi possível obter localização atual:',
+            error
+          )
+        }
+      )
+    }
+  }, 300)
+}
+
+// Confirmar localização selecionada
+function confirmLocationSelection() {
+  if (!selectedLocation) {
+    showToast('Por favor, selecione uma localização no mapa', 'error')
+    return
+  }
+
+  console.log('✅ [CLIENTE] Confirmando localização:', selectedLocation)
+
+  // Preencher campos ocultos com coordenadas
+  document.getElementById('lat_cliente').value = selectedLocation.lat
+  document.getElementById('lng_cliente').value = selectedLocation.lng
+
+  // Tentar extrair partes do endereço
+  if (selectedLocation.address) {
+    const addressParts = selectedLocation.address
+      .split(',')
+      .map((part) => part.trim())
+
+    // Preencher campos de endereço (melhor esforço)
+    if (addressParts.length >= 4) {
+      document.getElementById('rua').value = addressParts[0] || ''
+      document.getElementById('numero').value = addressParts[1] || ''
+      document.getElementById('bairro').value = addressParts[2] || ''
+      document.getElementById('cidade').value = addressParts[3] || ''
+    } else {
+      // Se não conseguir separar, colocar endereço completo na rua
+      document.getElementById('rua').value = selectedLocation.address
+    }
+
+    // Preencher campo oculto de endereço completo
+    document.getElementById('endereco_entrega').value = selectedLocation.address
+  }
+
+  // Mostrar indicador de sucesso
+  document.getElementById('location-indicator').style.display = 'block'
+
+  // Fechar modal
+  closeModal('modal-location-picker')
+
+  showToast('Localização selecionada com sucesso!', 'success')
+}
+
+// Geocodificar endereço a partir dos campos separados
+async function geocodeFromFields() {
+  const rua = document.getElementById('rua').value.trim()
+  const numero = document.getElementById('numero').value.trim()
+  const bairro = document.getElementById('bairro').value.trim()
+  const cidade = document.getElementById('cidade').value.trim()
+
+  if (!rua || !numero || !bairro || !cidade) {
+    console.warn('⚠️ [CLIENTE] Campos de endereço incompletos')
+    return null
+  }
+
+  // Concatenar endereço completo
+  const enderecoCompleto = `${rua}, ${numero}, ${bairro}, ${cidade}`
+
+  console.log('🔍 [CLIENTE] Geocodificando endereço:', enderecoCompleto)
+
+  try {
+    const location = await geocodeAddress(enderecoCompleto)
+
+    console.log('✅ [CLIENTE] Coordenadas obtidas:', location)
+
+    // Salvar coordenadas nos campos ocultos
+    document.getElementById('lat_cliente').value = location.lat
+    document.getElementById('lng_cliente').value = location.lng
+    document.getElementById('endereco_entrega').value =
+      location.formatted || enderecoCompleto
+
+    return location
+  } catch (error) {
+    console.error('❌ [CLIENTE] Erro ao geocodificar:', error)
+    showToast('Não foi possível localizar o endereço informado', 'warning')
+    return null
+  }
+}
+
+// Capturar localização atual do cliente (para entregas móveis)
+async function captureCurrentLocation() {
+  console.log('📍 [CLIENTE] Capturando localização atual...')
+
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      const error = 'Geolocalização não suportada pelo navegador'
+      console.error('❌ [CLIENTE]', error)
+      showToast(error, 'error')
+      reject(error)
+      return
+    }
+
+    showToast('Obtendo sua localização...', 'info')
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+
+        console.log('✅ [CLIENTE] Localização capturada:', { lat, lng })
+
+        try {
+          // Fazer geocodificação reversa para obter endereço
+          const address = await reverseGeocode(lat, lng)
+
+          console.log('✅ [CLIENTE] Endereço obtido:', address)
+
+          // Tentar extrair partes do endereço
+          const addressParts = address.split(',').map((part) => part.trim())
+
+          const locationData = {
+            lat,
+            lng,
+            address,
+            rua: addressParts[0] || '',
+            numero: addressParts[1] || 'S/N',
+            bairro: addressParts[2] || '',
+            cidade: addressParts[3] || '',
+          }
+
+          resolve(locationData)
+        } catch (error) {
+          console.error('❌ [CLIENTE] Erro ao obter endereço:', error)
+          // Mesmo sem endereço, retornar coordenadas
+          resolve({
+            lat,
+            lng,
+            address: `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`,
+            rua: '',
+            numero: '',
+            bairro: '',
+            cidade: '',
+          })
+        }
+      },
+      (error) => {
+        console.error('❌ [CLIENTE] Erro ao capturar localização:', error)
+        let errorMessage = 'Erro ao obter localização'
+
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage =
+              'Permissão de localização negada. Por favor, permita o acesso à localização.'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Localização indisponível'
+            break
+          case error.TIMEOUT:
+            errorMessage = 'Tempo esgotado ao obter localização'
+            break
+        }
+
+        showToast(errorMessage, 'error')
+        reject(errorMessage)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    )
   })
 }
