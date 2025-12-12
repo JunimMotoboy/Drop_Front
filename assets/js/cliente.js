@@ -921,7 +921,16 @@ function initializeSocket() {
 
 // Abrir modal de seleção de localização
 function openLocationPickerModal() {
-  console.log('🗺️ [CLIENTE] Abrindo modal de seleção de localização')
+  console.log('🗺️ [CLIENTE] Função openLocationPickerModal() chamada')
+  
+  // Verificar se Leaflet está carregado
+  if (typeof L === 'undefined') {
+    console.error('❌ [CLIENTE] Leaflet (L) não está carregado!')
+    showToast('Erro: Biblioteca de mapas não carregada. Recarregue a página.', 'error')
+    return
+  }
+  
+  console.log('✅ [CLIENTE] Leaflet está carregado')
 
   const modal = document.getElementById('modal-location-picker')
   if (!modal) {
@@ -929,12 +938,18 @@ function openLocationPickerModal() {
     showToast('Erro ao abrir seletor de localização', 'error')
     return
   }
+  
+  console.log('✅ [CLIENTE] Modal encontrado:', modal)
 
   // Resetar seleção anterior
   selectedLocation = null
-  document.getElementById('selected-address').textContent =
-    'Clique no mapa para selecionar'
-  document.getElementById('btn-confirm-location').disabled = true
+  const selectedAddressEl = document.getElementById('selected-address')
+  const confirmBtn = document.getElementById('btn-confirm-location')
+  const loadingIndicator = document.getElementById('location-loading')
+  
+  selectedAddressEl.textContent = 'Clique no mapa para selecionar'
+  selectedAddressEl.style.color = '#666'
+  confirmBtn.disabled = true
 
   // Abrir modal
   modal.classList.add('active')
@@ -942,14 +957,18 @@ function openLocationPickerModal() {
   // Aguardar modal ficar visível antes de inicializar mapa
   setTimeout(() => {
     if (!locationPickerMap) {
+      console.log('🗺️ [CLIENTE] Criando novo mapa de seleção')
+      
       // Criar novo mapa para seleção
       locationPickerMap = L.map('location-picker-map').setView(
         [-23.5505, -46.6333],
         13
       )
 
+      // Adicionar camada de tiles
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
       }).addTo(locationPickerMap)
 
       // Adicionar evento de clique no mapa
@@ -959,7 +978,7 @@ function openLocationPickerModal() {
 
         console.log('📍 [CLIENTE] Localização selecionada:', { lat, lng })
 
-        // Salvar localização selecionada
+        // Salvar localização selecionada (temporária)
         selectedLocation = { lat, lng }
 
         // Limpar marcadores anteriores
@@ -969,50 +988,108 @@ function openLocationPickerModal() {
           }
         })
 
-        // Adicionar marcador na posição clicada
-        L.marker([lat, lng])
+        // Adicionar marcador na posição clicada com ícone personalizado
+        const marker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: 'custom-location-marker',
+            html: '<div class="marker-pin-selected">📍</div>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+          })
+        })
           .addTo(locationPickerMap)
           .bindPopup('Localização selecionada')
           .openPopup()
 
-        // Fazer geocodificação reversa para obter endereço
+        // Mostrar loading
+        if (loadingIndicator) {
+          loadingIndicator.style.display = 'flex'
+        }
+        selectedAddressEl.textContent = 'Obtendo endereço...'
+        selectedAddressEl.style.color = '#666'
+        confirmBtn.disabled = true
+
+        // Fazer geocodificação reversa para obter endereço estruturado
         try {
-          showToast('Obtendo endereço...', 'info')
-          const address = await reverseGeocode(lat, lng)
-          document.getElementById('selected-address').textContent = address
-          selectedLocation.address = address
+          console.log('🔍 [CLIENTE] Iniciando geocodificação reversa estruturada...')
+          
+          // Usar nova função com dados estruturados
+          const addressData = await reverseGeocode(lat, lng, 2, true)
+          
+          console.log('✅ [CLIENTE] Dados estruturados recebidos:', addressData)
 
+          // Salvar dados estruturados na seleção
+          selectedLocation.addressData = addressData
+          selectedLocation.address = addressData.formatted
+
+          // Atualizar display
+          selectedAddressEl.textContent = addressData.formatted
+          selectedAddressEl.style.color = '#2e7d32'
+          
           // Habilitar botão de confirmar
-          document.getElementById('btn-confirm-location').disabled = false
+          confirmBtn.disabled = false
 
-          console.log('✅ [CLIENTE] Endereço obtido:', address)
+          // Esconder loading
+          if (loadingIndicator) {
+            loadingIndicator.style.display = 'none'
+          }
+
+          showToast('Endereço obtido com sucesso!', 'success')
+          console.log('✅ [CLIENTE] Endereço estruturado obtido:', addressData)
         } catch (error) {
           console.error('❌ [CLIENTE] Erro ao obter endereço:', error)
-          document.getElementById(
-            'selected-address'
-          ).textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
-          document.getElementById('btn-confirm-location').disabled = false
+          
+          // Fallback: usar coordenadas
+          selectedLocation.address = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
+          selectedLocation.addressData = {
+            formatted: selectedLocation.address,
+            rua: '',
+            numero: 'S/N',
+            bairro: '',
+            cidade: '',
+            lat: lat,
+            lng: lng,
+            isApproximate: true
+          }
+          
+          selectedAddressEl.textContent = selectedLocation.address
+          selectedAddressEl.style.color = '#856404'
+          confirmBtn.disabled = false
+
+          // Esconder loading
+          if (loadingIndicator) {
+            loadingIndicator.style.display = 'none'
+          }
+
+          showToast('Não foi possível obter endereço. Você pode preencher manualmente.', 'warning')
         }
       })
     } else {
+      console.log('🔄 [CLIENTE] Redimensionando mapa existente')
       // Se mapa já existe, apenas redimensionar
       locationPickerMap.invalidateSize()
     }
 
     // Tentar centralizar no local atual do usuário
     if (navigator.geolocation) {
+      console.log('📍 [CLIENTE] Tentando obter localização atual...')
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude
           const lng = position.coords.longitude
           locationPickerMap.setView([lat, lng], 15)
-          console.log('✅ [CLIENTE] Mapa centralizado na localização atual')
+          console.log('✅ [CLIENTE] Mapa centralizado na localização atual:', { lat, lng })
         },
         (error) => {
           console.warn(
             '⚠️ [CLIENTE] Não foi possível obter localização atual:',
-            error
+            error.message
           )
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 60000
         }
       )
     }
@@ -1032,34 +1109,94 @@ function confirmLocationSelection() {
   document.getElementById('lat_cliente').value = selectedLocation.lat
   document.getElementById('lng_cliente').value = selectedLocation.lng
 
-  // Tentar extrair partes do endereço
-  if (selectedLocation.address) {
-    const addressParts = selectedLocation.address
-      .split(',')
-      .map((part) => part.trim())
+  // Usar dados estruturados se disponíveis
+  if (selectedLocation.addressData) {
+    const data = selectedLocation.addressData
+    
+    console.log('📝 [CLIENTE] Preenchendo campos com dados estruturados:', data)
 
-    // Preencher campos de endereço (melhor esforço)
-    if (addressParts.length >= 4) {
-      document.getElementById('rua').value = addressParts[0] || ''
-      document.getElementById('numero').value = addressParts[1] || ''
-      document.getElementById('bairro').value = addressParts[2] || ''
-      document.getElementById('cidade').value = addressParts[3] || ''
-    } else {
-      // Se não conseguir separar, colocar endereço completo na rua
-      document.getElementById('rua').value = selectedLocation.address
-    }
+    // Preencher campos de endereço com dados estruturados
+    document.getElementById('rua').value = data.rua || ''
+    document.getElementById('numero').value = data.numero || 'S/N'
+    document.getElementById('bairro').value = data.bairro || ''
+    document.getElementById('cidade').value = data.cidade || ''
 
     // Preencher campo oculto de endereço completo
-    document.getElementById('endereco_entrega').value = selectedLocation.address
-  }
+    document.getElementById('endereco_entrega').value = data.formatted
 
-  // Mostrar indicador de sucesso
-  document.getElementById('location-indicator').style.display = 'block'
+    // Validar campos preenchidos
+    validateAddressField(document.getElementById('rua'))
+    validateAddressField(document.getElementById('numero'))
+    validateAddressField(document.getElementById('bairro'))
+    validateAddressField(document.getElementById('cidade'))
+
+    // Verificar se todos os campos foram preenchidos
+    const allFieldsFilled = data.rua && data.numero && data.bairro && data.cidade
+    
+    if (!allFieldsFilled) {
+      console.warn('⚠️ [CLIENTE] Alguns campos não foram preenchidos automaticamente')
+      showToast(
+        'Localização selecionada! Por favor, complete os campos que faltam.',
+        'info'
+      )
+    }
+
+    // Atualizar indicador de localização
+    const locationIndicator = document.getElementById('location-indicator')
+    const locationIndicatorText = document.getElementById('location-indicator-text')
+
+    if (data.isApproximate) {
+      locationIndicator.style.background = '#fff3cd'
+      locationIndicator.querySelector('i').style.color = '#856404'
+      locationIndicatorText.style.color = '#856404'
+      locationIndicatorText.textContent = 'Localização aproximada. Verifique os campos.'
+    } else {
+      locationIndicator.style.background = '#e8f5e9'
+      locationIndicator.querySelector('i').style.color = '#4caf50'
+      locationIndicatorText.style.color = '#2e7d32'
+      locationIndicatorText.textContent = 'Localização selecionada no mapa ✓'
+    }
+
+    locationIndicator.style.display = 'block'
+  } else {
+    // Fallback: tentar extrair do endereço formatado
+    console.warn('⚠️ [CLIENTE] Dados estruturados não disponíveis, usando fallback')
+    
+    if (selectedLocation.address) {
+      const addressParts = selectedLocation.address
+        .split(',')
+        .map((part) => part.trim())
+
+      // Preencher campos de endereço (melhor esforço)
+      if (addressParts.length >= 4) {
+        document.getElementById('rua').value = addressParts[0] || ''
+        document.getElementById('numero').value = addressParts[1] || 'S/N'
+        document.getElementById('bairro').value = addressParts[2] || ''
+        document.getElementById('cidade').value = addressParts[3] || ''
+      } else {
+        // Se não conseguir separar, colocar endereço completo na rua
+        document.getElementById('rua').value = selectedLocation.address
+        document.getElementById('numero').value = 'S/N'
+      }
+
+      // Preencher campo oculto de endereço completo
+      document.getElementById('endereco_entrega').value = selectedLocation.address
+    }
+
+    // Mostrar indicador de sucesso
+    const locationIndicator = document.getElementById('location-indicator')
+    locationIndicator.style.display = 'block'
+    
+    showToast(
+      'Localização selecionada! Verifique e complete os campos se necessário.',
+      'info'
+    )
+  }
 
   // Fechar modal
   closeModal('modal-location-picker')
 
-  showToast('Localização selecionada com sucesso!', 'success')
+  console.log('✅ [CLIENTE] Localização confirmada e campos preenchidos')
 }
 
 // Geocodificar endereço a partir dos campos separados

@@ -194,9 +194,10 @@ function useFallbackCoordinates(address) {
  * @param {number} lat - Latitude
  * @param {number} lng - Longitude
  * @param {number} retries - Número de tentativas (padrão: 2)
- * @returns {Promise<string>}
+ * @param {boolean} returnStructured - Se true, retorna objeto estruturado (padrão: false)
+ * @returns {Promise<string|object>}
  */
-async function reverseGeocode(lat, lng, retries = 2) {
+async function reverseGeocode(lat, lng, retries = 2, returnStructured = false) {
   // Validar coordenadas
   if (!isValidCoordinates(lat, lng)) {
     throw new Error('Coordenadas inválidas')
@@ -206,7 +207,7 @@ async function reverseGeocode(lat, lng, retries = 2) {
     console.warn('⚠️ Coordenadas fora do Brasil')
   }
 
-  const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`
+  const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}${returnStructured ? '_structured' : ''}`
 
   // Verificar cache
   if (geocodeCache.has(cacheKey)) {
@@ -237,13 +238,39 @@ async function reverseGeocode(lat, lng, retries = 2) {
       const data = await response.json()
 
       if (data.results && data.results.length > 0) {
-        const address = data.results[0].formatted
+        const result = data.results[0]
+        const components = result.components
 
-        // Salvar no cache
-        geocodeCache.set(cacheKey, address)
+        if (returnStructured) {
+          // Retornar objeto estruturado com componentes do endereço
+          const structuredAddress = {
+            formatted: result.formatted,
+            rua: components.road || components.street || components.pedestrian || '',
+            numero: components.house_number || 'S/N',
+            bairro: components.suburb || components.neighbourhood || components.quarter || components.district || '',
+            cidade: components.city || components.town || components.village || components.municipality || '',
+            estado: components.state || '',
+            cep: components.postcode || '',
+            pais: components.country || 'Brasil',
+            lat: result.geometry.lat,
+            lng: result.geometry.lng
+          }
 
-        console.log('✅ Endereço encontrado:', address)
-        return address
+          // Salvar no cache
+          geocodeCache.set(cacheKey, structuredAddress)
+
+          console.log('✅ Endereço estruturado encontrado:', structuredAddress)
+          return structuredAddress
+        } else {
+          // Retornar apenas string formatada
+          const address = result.formatted
+
+          // Salvar no cache
+          geocodeCache.set(cacheKey, address)
+
+          console.log('✅ Endereço encontrado:', address)
+          return address
+        }
       } else {
         throw new Error('Endereço não encontrado para estas coordenadas')
       }
@@ -257,9 +284,26 @@ async function reverseGeocode(lat, lng, retries = 2) {
     }
   }
 
-  // Fallback: retornar coordenadas formatadas
-  console.warn('⚠️ Não foi possível obter endereço, retornando coordenadas')
-  return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
+  // Fallback
+  console.warn('⚠️ Não foi possível obter endereço, retornando fallback')
+  
+  if (returnStructured) {
+    return {
+      formatted: `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`,
+      rua: '',
+      numero: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      cep: '',
+      pais: 'Brasil',
+      lat: lat,
+      lng: lng,
+      isApproximate: true
+    }
+  } else {
+    return `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`
+  }
 }
 
 /**
